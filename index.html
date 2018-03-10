@@ -18,7 +18,7 @@
 	// Deklaracja zmiennej, w której będziemy trzymać wyniki — głosujących.
 	var voters = [];
 	
-	var max = 1;
+	var max = 100;
 
 	$(document).ready(function(){
 		$("button").click(function(event){
@@ -48,7 +48,6 @@
 					steem.api.getActiveVotes(author, post.permlink, function(err, votes) {
 						// Dla każdego głosującego wykonujemy funkcję.
 						votes.forEach(function(vote) {
-							console.log(vote);
 							// Jeśli nie jesteśmy głosującym.
 							if (vote.voter !== author) {
 								// Szukamy w tablicy wyników czy już głosujący w niej jest. Patrz poniżej funkcja search.
@@ -79,8 +78,6 @@
 	}
 
 	function display() {
-		console.log('display');
-		console.log(voters);
 		voters.sort(compare);
 		// Inicjujemy wykres na elemencie main
 		var myChart = echarts.init(document.getElementById('main'));
