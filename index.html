@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Post voters</title>
+	<meta charset="utf-8">
+  
+	<script src="https://cdn.steemjs.com/lib/latest/steem.min.js"></script>
+	<script src="https://echarts.baidu.com/dist/echarts.min.js"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	
+	<script>
+	
+	// Deklaracja zmiennej autora, TU możemy wstawić swój nick.
+	var author = '';
+
+	// Deklaracja zmiennej, w której będziemy trzymać wyniki — głosujących.
+	var voters = [];
+	
+	var max = 1;
+
+	$(document).ready(function(){
+		$("button").click(function(event){
+			event.preventDefault();
+			author = $('input').val();
+			$('.progress-bar').css("width", "0%");
+			loadDataFromSteem();
+		});
+	});
+	
+	function loadDataFromSteem() {
+		voters = [];
+		// Deklaracja zapytania, pobieramy 100 postów autora.
+		var query = {
+			tag: author,
+			limit: max
+		};
+		// Wykonanie zapytania, zwracane są posty.
+		steem.api.getDiscussionsByBlog(query, function(err, posts) {
+			var i = 0;
+			// Dla każdego posta wykonujemy funkcję.
+			posts.forEach(function(post) {
+				$('.progress-bar').css("width", parseInt( 50 * i++ / max) + "%");
+				// Jeśli jesteśmy autorem, zapytanie zwraca również posty Resteemowane.
+				if (post.author === author) {
+					// Pobieramy głosujących.
+					steem.api.getActiveVotes(author, post.permlink, function(err, votes) {
+						// Dla każdego głosującego wykonujemy funkcję.
+						votes.forEach(function(vote) {
+							console.log(vote);
+							// Jeśli nie jesteśmy głosującym.
+							if (vote.voter !== author) {
+								// Szukamy w tablicy wyników czy już głosujący w niej jest. Patrz poniżej funkcja search.
+								let voterId = search('@' + vote.voter, voters);
+								// Jeśli nie znaleziono głosującego w tablicy. Dodajemy go.
+								if (voterId === false) {
+									voter = ({name: '@' + vote.voter, votes: 1, reward: parseInt(vote.rshares)});
+									voters.push(voter);
+								} else { // Jeśli znaleziono głosującego w tablicy. Nadpisujemy zwiększając jego liczbę głosów (votes) i nagrodę (reward).
+									voters[voterId] = {
+										name: 	'@' + vote.voter,
+										votes:	voters[voterId].votes + 1, 
+										reward: voters[voterId].reward + parseInt(vote.rshares)
+									}
+								}
+							}
+						});
+					});
+				}
+			});
+			setTimeout(function(){ 
+				display(); 
+				$('.progress-bar').css("width", "100%");
+			}, 2000);
+			
+			display();
+		});
+	}
+
+	function display() {
+		console.log('display');
+		console.log(voters);
+		voters.sort(compare);
+		// Inicjujemy wykres na elemencie main
+		var myChart = echarts.init(document.getElementById('main'));
+		// Tworzymy dane do wykresu.
+		var data = prepareData(voters);
+		// Ustawiamy opcje.
+		option = {
+			title : {
+				text: '@' + author,
+				subtext: 'Post voters',
+				x:'center'
+			},
+			tooltip : {
+				trigger: 'item',
+				formatter: "{a} <br/>{b} : {c} ({d}%)"
+			},
+			legend: {
+				type: 'scroll',
+				orient: 'vertical',
+				right: 10,
+				top: 20,
+				bottom: 20,
+				data: data.legendData,
+
+				selected: data.selected
+			},
+			series : [
+				{
+					name: 'User reward',
+					type: 'pie',
+					radius : '55%',
+					center: ['40%', '50%'],
+					data: data.seriesData,
+					itemStyle: {
+						emphasis: {
+							shadowBlur: 10,
+							shadowOffsetX: 0,
+							shadowColor: 'rgba(0, 0, 0, 0.5)'
+						}
+					}
+				}
+			]
+		};	
+		// Ustawiamy opcje na wykresie.
+		myChart.setOption(option);
+	}
+
+	// Funkcja porównywająca, do sortowania.
+	function compare(a, b) {
+	  if (a.reward < b.reward)
+		return 1;
+	  if (a.reward > b.reward)
+		return -1;
+	  return 0;
+	}
+	// Sprawdzanie tablicy wyników, czy głosujący już w niej jest.
+	function search(key, array) {
+		for (var i = 0; i < array.length; i++) {
+			if (array[i].name === key) {
+				return i;
+			}
+		}
+		return false;
+	}
+	
+	// Funkcja tworząca dane do wykresu.
+	function prepareData(items) {
+		var legendData = [];
+		var seriesData = [];
+		var selected = {};
+		
+		var i = 0;
+		items.forEach(function(item) {
+			if (item.reward > 0) {
+				legendData.push(item.name);
+				selected[item.name] = i++ < 10;
+				seriesData.push({name: item.name, value: item.reward});
+			}
+
+		});
+		
+		return {
+			legendData: legendData,
+			seriesData: seriesData,
+			selected: selected
+		};
+	}
+	</script>
+</head>
+<body style="">
+<div class="container">
+	<div class="row">
+		<div class="col-md-12">
+			<div class="panel panel-default">
+				<div class="panel-heading">Insert Username and press Submit button</div>
+				<div class="panel-body">
+						<div class="row">
+							<div class="col-md-6">
+								<form class="form-inline">
+									<div class="input-group mb-2 mr-sm-2 mb-sm-0">
+										<div class="input-group-addon">@</div>
+										<input type="text" class="form-control" id="inlineFormInputGroup" placeholder="Username">
+									 </div>
+									 <button type="submit" class="btn btn-primary">Submit</button>
+								</form>							
+							</div>
+							<div class="col-md-6">
+								<div class="progress">
+									<div class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+								</div>
+							</div>
+						</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12">
+			<div class="panel panel-default">
+				<div class="panel-heading">Chart</div>
+				<div class="panel-body"><div id="main" style="height: 600px;"></div></div>
+			</div>		
+		</div>
+	</div>
+		<div class="row">
+		<div class="col-md-12">
+			<div class="panel panel-default">
+				<div class="panel-heading">Info</div>
+				<div class="panel-body"><a href="https://steemit.com/@fat.music">@fat.music on Steemit</a></div>
+			</div>		
+		</div>
+	</div>
+</body>
+</html>
