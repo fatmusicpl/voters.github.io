@@ -14,19 +14,33 @@
 	
 	// Deklaracja zmiennej autora, TU możemy wstawić swój nick.
 	var author = '';
-
 	// Deklaracja zmiennej, w której będziemy trzymać wyniki — głosujących.
 	var voters = [];
 	
+	var rewardBalance = 0;
+	var recentClaims = 0;
+	var steemPrice = 0;
+	
 	var max = 100;
-
 	$(document).ready(function(){
 		$("button").click(function(event){
 			event.preventDefault();
-			author = $('input').val();
-			$('.progress-bar').css("width", "0%");
+			author = $('#username').val();
 			loadDataFromSteem();
 		});
+	});
+	
+	steem.api.getRewardFund('post', function(err, rewardFund) {
+		rewardBalance = parseFloat(rewardFund.reward_balance.replace(' STEEM'));
+		recentClaims = rewardFund.recent_claims;
+		$('#rewardBalance').val(parseInt(rewardBalance).toLocaleString());
+		$('#recentClaims').val(parseInt(recentClaims / 1000000).toLocaleString());
+	});
+	
+	steem.api.getCurrentMedianHistoryPrice(function(err, price) {
+		console.log(price);
+		steemPrice = parseFloat(price.base.replace(" SBD", ""));
+		$('#steemPrice').val(steemPrice.toLocaleString());
 	});
 	
 	function loadDataFromSteem() {
@@ -36,47 +50,44 @@
 			tag: author,
 			limit: max
 		};
+
 		// Wykonanie zapytania, zwracane są posty.
 		steem.api.getDiscussionsByBlog(query, function(err, posts) {
 			var i = 0;
 			// Dla każdego posta wykonujemy funkcję.
 			posts.forEach(function(post) {
-				$('.progress-bar').css("width", parseInt( 50 * i++ / max) + "%");
 				// Jeśli jesteśmy autorem, zapytanie zwraca również posty Resteemowane.
 				if (post.author === author) {
 					// Pobieramy głosujących.
-					steem.api.getActiveVotes(author, post.permlink, function(err, votes) {
-						// Dla każdego głosującego wykonujemy funkcję.
-						votes.forEach(function(vote) {
-							// Jeśli nie jesteśmy głosującym.
-							if (vote.voter !== author) {
-								// Szukamy w tablicy wyników czy już głosujący w niej jest. Patrz poniżej funkcja search.
-								let voterId = search('@' + vote.voter, voters);
-								// Jeśli nie znaleziono głosującego w tablicy. Dodajemy go.
-								if (voterId === false) {
-									voter = ({name: '@' + vote.voter, votes: 1, reward: parseInt(vote.rshares)});
-									voters.push(voter);
-								} else { // Jeśli znaleziono głosującego w tablicy. Nadpisujemy zwiększając jego liczbę głosów (votes) i nagrodę (reward).
-									voters[voterId] = {
-										name: 	'@' + vote.voter,
-										votes:	voters[voterId].votes + 1, 
-										reward: voters[voterId].reward + parseInt(vote.rshares)
-									}
+					post.active_votes.forEach(function(vote) {
+						let SBD = parseFloat((vote.rshares * rewardBalance / recentClaims * steemPrice).toFixed(3));
+						// Jeśli nie jesteśmy głosującym.
+						if (vote.voter !== author) {
+							// Szukamy w tablicy wyników czy już głosujący w niej jest. Patrz poniżej funkcja search.
+							let voterId = search('@' + vote.voter, voters);
+							// Jeśli nie znaleziono głosującego w tablicy. Dodajemy go.
+							if (voterId === false) {
+								voter = ({name: '@' + vote.voter, votes: 1, reward: parseInt(vote.rshares), SBD: SBD});
+								voters.push(voter);
+							} else { // Jeśli znaleziono głosującego w tablicy. Nadpisujemy zwiększając jego liczbę głosów (votes) i nagrodę (reward).
+								voters[voterId] = {
+									name: 	'@' + vote.voter,
+									votes:	voters[voterId].votes + 1, 
+									reward: voters[voterId].reward + parseInt(vote.rshares),
+									SBD: parseFloat((voters[voterId].SBD + SBD).toFixed(3))
 								}
 							}
-						});
+						}
 					});
 				}
 			});
 			setTimeout(function(){ 
 				display(); 
-				$('.progress-bar').css("width", "100%");
 			}, 2000);
 			
 			display();
 		});
 	}
-
 	function display() {
 		voters.sort(compare);
 		// Inicjujemy wykres na elemencie main
@@ -92,7 +103,7 @@
 			},
 			tooltip : {
 				trigger: 'item',
-				formatter: "{a} <br/>{b} : {c} ({d}%)"
+				formatter: "{a} <br/>{b}: {c} SBD ({d}%)"
 			},
 			legend: {
 				type: 'scroll',
@@ -101,7 +112,6 @@
 				top: 20,
 				bottom: 20,
 				data: data.legendData,
-
 				selected: data.selected
 			},
 			series : [
@@ -124,7 +134,6 @@
 		// Ustawiamy opcje na wykresie.
 		myChart.setOption(option);
 	}
-
 	// Funkcja porównywająca, do sortowania.
 	function compare(a, b) {
 	  if (a.reward < b.reward)
@@ -153,10 +162,9 @@
 		items.forEach(function(item) {
 			if (item.reward > 0) {
 				legendData.push(item.name);
-				selected[item.name] = i++ < 10;
-				seriesData.push({name: item.name, value: item.reward});
+				selected[item.name] = i++ < 16;
+				seriesData.push({name: item.name, value: item.SBD});
 			}
-
 		});
 		
 		return {
@@ -171,25 +179,63 @@
 <div class="container">
 	<div class="row">
 		<div class="col-md-12">
-			<div class="panel panel-default">
-				<div class="panel-heading">Insert Username and press Submit button</div>
-				<div class="panel-body">
+			<div class="row">
+				<div class="col-md-4">
+					<form class="">
 						<div class="row">
-							<div class="col-md-6">
-								<form class="form-inline">
+							<div class="col-sm-12">
+								<label for="recentClaims">Insert Username and press Submit button</label>
+							</div>
+							<div class="col-sm-8">
+								<div class="form-group">
 									<div class="input-group mb-2 mr-sm-2 mb-sm-0">
 										<div class="input-group-addon">@</div>
-										<input type="text" class="form-control" id="inlineFormInputGroup" placeholder="Username">
-									 </div>
-									 <button type="submit" class="btn btn-primary">Submit</button>
-								</form>							
+										<input type="text" class="form-control" id="username" placeholder="Username">
+									</div>
+								</div>
 							</div>
-							<div class="col-md-6">
-								<div class="progress">
-									<div class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+							<div class="col-sm-4">
+								<div class="form-group">
+									<div class="input-group mb-2 mr-sm-2 mb-sm-0">
+									<button type="submit" class="btn btn-primary">Submit</button>
+									</div>
 								</div>
 							</div>
 						</div>
+					</form>							
+				</div>
+				<div class="col-md-8">
+					<form class="">
+						<div class="row">
+							<div class="col-sm-4">
+								<div class="form-group">
+									<label for="steemPrice">Steem Price</label>
+									<div class="input-group mb-2 mr-sm-2 mb-sm-0">
+										<div class="input-group-addon">$</div>
+										<input type="text" class="form-control" id="steemPrice" readonly>
+									</div>
+								 </div>
+							</div>
+							<div class="col-sm-4">
+								<div class="form-group">
+									<label for="rewardBalance">Reward balance</label>
+									<div class="input-group mb-2 mr-sm-2 mb-sm-0">
+										<input type="text" class="form-control" id="rewardBalance" readonly  style="text-align: right;">
+										<div class="input-group-addon">STEEM</div>
+									</div>
+								 </div>
+							</div>
+							<div class="col-sm-4">
+								<div class="form-group">
+									<label for="recentClaims">Recent claims</label>
+									<div class="input-group mb-2 mr-sm-2 mb-sm-0">
+										<input type="text" class="form-control" id="recentClaims" readonly  style="text-align: right;">
+										<div class="input-group-addon">M</div>
+									</div>
+								 </div>										
+							</div>
+						</div>
+					</form>
 				</div>
 			</div>
 		</div>
