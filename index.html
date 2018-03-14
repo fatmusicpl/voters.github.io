@@ -21,13 +21,21 @@
 	var recentClaims = 0;
 	var steemPrice = 0;
 	
+	var summarySBD = 0;
+	var summaryVotes = 0;
+	var summaryVoters = 0;
+	
 	var max = 100;
+	
+	var ctx;
+	
 	$(document).ready(function(){
 		$("button").click(function(event){
 			event.preventDefault();
 			author = $('#username').val();
 			loadDataFromSteem();
 		});
+		
 	});
 	
 	steem.api.getRewardFund('post', function(err, rewardFund) {
@@ -63,10 +71,16 @@
 						let SBD = parseFloat((vote.rshares * rewardBalance / recentClaims * steemPrice).toFixed(3));
 						// Jeśli nie jesteśmy głosującym.
 						if (vote.voter !== author) {
+							console.log(summarySBD);
+							if (SBD > 0) {
+								summarySBD = parseFloat((summarySBD + SBD).toFixed(3));
+							}
+							summaryVotes++;
 							// Szukamy w tablicy wyników czy już głosujący w niej jest. Patrz poniżej funkcja search.
 							let voterId = search('@' + vote.voter, voters);
 							// Jeśli nie znaleziono głosującego w tablicy. Dodajemy go.
 							if (voterId === false) {
+								summaryVoters++;
 								voter = ({name: '@' + vote.voter, votes: 1, reward: parseInt(vote.rshares), SBD: SBD});
 								voters.push(voter);
 							} else { // Jeśli znaleziono głosującego w tablicy. Nadpisujemy zwiększając jego liczbę głosów (votes) i nagrodę (reward).
@@ -76,20 +90,22 @@
 									reward: voters[voterId].reward + parseInt(vote.rshares),
 									SBD: parseFloat((voters[voterId].SBD + SBD).toFixed(3))
 								}
+								
 							}
 						}
 					});
 				}
 			});
 			setTimeout(function(){ 
+				voters.sort(compare);
 				display(); 
+				drawImages();
 			}, 2000);
 			
-			display();
 		});
 	}
 	function display() {
-		voters.sort(compare);
+		
 		// Inicjujemy wykres na elemencie main
 		var myChart = echarts.init(document.getElementById('main'));
 		// Tworzymy dane do wykresu.
@@ -173,6 +189,40 @@
 			selected: selected
 		};
 	}
+	
+	
+	
+	function drawImages() {
+		ctx = demo.getContext('2d');
+		var x = 0;
+		var max = parseInt(150 /  voters[0].SBD);
+		console.log(max);
+		voters.forEach(function(vote) {
+			if (vote.SBD >= 0.001) {
+				let size = 24 + parseInt(max * vote.SBD);
+				drawImage(vote.name, size, x, 150 - size);
+				x = x + (size / 3);
+			}
+		});
+		ctx.font = "32px Comic Sans MS";
+		ctx.fillStyle = "#337ab7";
+		ctx.textAlign = "center";
+		ctx.fillText('@' + author + ' voters', 600, 30); 
+		ctx.font = "18px Comic Sans MS";
+		ctx.fillText(summarySBD + ' SBD', 600, 55); 
+		ctx.fillText(summaryVotes + ' Votes', 600, 75); 
+		ctx.fillText(summaryVoters + ' Voters', 600, 95); 
+		
+	}
+	function drawImage(name, size, x, y) {
+		console.log(size);
+		var img = new Image();
+		img.crossOrigin = 'anonymous';
+		img.src = 'https://robohash.org/' + name.replace("@", "") + '.png?size=128x128';
+		img.onload = function() {
+			ctx.drawImage(img, x, y, size, size);
+		}
+	}
 	</script>
 </head>
 <body style="">
@@ -248,7 +298,17 @@
 			</div>		
 		</div>
 	</div>
-		<div class="row">
+	<div class="row">
+		<div class="col-md-12">
+			<div class="panel panel-default">
+				<div class="panel-heading">Image</div>
+				<div class="panel-body" style="text-align: center;">
+					<canvas id="demo" width="960" height="150"></canvas>
+				</div>
+			</div>		
+		</div>
+	</div>
+	<div class="row">
 		<div class="col-md-12">
 			<div class="panel panel-default">
 				<div class="panel-heading">Info</div>
