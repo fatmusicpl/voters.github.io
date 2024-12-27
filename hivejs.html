@@ -23,13 +23,19 @@
 		$("#submit").click(function(event){
 			event.preventDefault();
 			author = $('#author').val();
-			console.log(author);
+			limit = $('#limit').val();
+			query = {
+				tag: author,
+				limit: limit
+			};
 			loadHiveDiscussionsByBlog();
 			drawTable();
 		});
 	});
 	
 	function loadHiveDiscussionsByBlog(){
+		voters = [];
+		sum_share = 0;
 		hive.api.getDiscussionsByBlog(query, function(err, posts) {
 			console.log(posts);
 			posts.forEach(function(post) {
@@ -93,7 +99,7 @@ td, th {
   <span class="input-group-text" id="basic-addon1">@</span>
   <input type="text" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" id="author" value="fat.music">
   <span class="input-group-text" id="basic-addon1">#</span>
-  <input type="text" class="form-control" placeholder="Limit" aria-label="Limit" aria-describedby="basic-addon1" value=3>
+  <input type="text" class="form-control" placeholder="Limit" aria-label="Limit" aria-describedby="basic-addon1" value=3 id="limit">
   <button class="btn btn-outline-secondary" type="button" id="submit">Submit</button>
 </div>
 							</div>
