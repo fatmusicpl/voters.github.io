@@ -8,17 +8,37 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.jsdelivr.net/npm/@hiveio/hive-js/dist/hive.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chicle&display=swap" rel="stylesheet">
 <script>
 	var B = 1000000000;
+	var timeout = 200;
+	var svgWidth = 1200;
+	var svgHeight = 400;
+	var cats = 50;
 	var author = 'fat.music';
-	var limit = 3;
+	var limit = 5;
 	var voters = [];
 	var sum_share = 0;
+	var sum = {
+		share: 0,
+		votes: 0,
+		hdb: 0,
+	};
 	
 	var query = {
 		tag: author,
 		limit: limit
 	};
+	authorResp = [];
+
+hive.api.getAccounts([author], function(err, response){
+	authorResp = response[0];
+    console.log(err, authorResp);
+});
+
+
 	$(document).ready(function(){
 		$("#submit").click(function(event){
 			event.preventDefault();
@@ -29,58 +49,212 @@
 				limit: limit
 			};
 			loadHiveDiscussionsByBlog();
-			drawTable();
+
 		});
+		
+	document.getElementById("saveButton").addEventListener("click", saveSVGAsPNG);
 	});
 	
 	function loadHiveDiscussionsByBlog(){
 		voters = [];
-		sum_share = 0;
+		sum = {
+			share: 0,
+			votes: 0,
+			hdb: 0,
+			voters: 0,
+		};
 		hive.api.getDiscussionsByBlog(query, function(err, posts) {
-			console.log(posts);
 			posts.forEach(function(post) {
 				if (author === post.author) {
 					let net_rshares = post.net_rshares;
 					let pending_payout_value = parseFloat(post.pending_payout_value.replace(' HBD'));
+					let total_payout_value = parseFloat(post.total_payout_value.replace(' HBD'));
+					let payout_value = pending_payout_value + total_payout_value;
 					post.active_votes.forEach(function(vote) {
 						sum_share += vote.rshares;
+						sum = {
+							share: sum.share + vote.rshares,
+							votes: sum.votes + 1,
+							hdb: sum.hdb + (vote.rshares / net_rshares) * payout_value,
+							voters: sum.voters,
+						}
 						if (voter = voters.find(v => v.name === vote.voter)) {
 							voter.votes++;
 							voter.share += vote.rshares;
-							voter.payout_value += (vote.rshares / net_rshares) * pending_payout_value;
-							
+							voter.payout_value += (vote.rshares / net_rshares) * payout_value;
 						} else {
-							console.log('rshares, net_rshares', vote.rshares, net_rshares);
-							console.log('%', vote.rshares / net_rshares);
-							console.log('hdb', (vote.rshares / net_rshares) * pending_payout_value);
 							voters.push({
 								name: vote.voter,
 								votes: 1,
 								share: vote.rshares,
-								payout_value: (vote.rshares / net_rshares) * pending_payout_value,
+								payout_value: (vote.rshares / net_rshares) * payout_value,
 							});
+							sum.voters = sum.voters + 1;
 						}
 					});
 					console.log(net_rshares);
 				}
 			});
 			voters.sort((a, b) => b.share - a.share);
+			voters = voters.slice(0, cats);
+			voters.sort((a, b) => a.share - b.share);
 			drawTable();
+			createSVG();
 		});
+		
 	}
 	
 	function drawTable(){
 		$('#tbody').html('');
-		voters.forEach(function(vote) {
-			$('#tbody').append('<tr><td>@'+vote.name+'</td><td>'+vote.votes+'</td><td>'+vote.share+'</td><td>'+vote.payout_value.toFixed(3)+' HBD</td><td>'+((100 * vote.share) / sum_share).toFixed(0)+' %</td></tr>');
-		});
+		voters.forEach((vote, index) => addRow(vote, index));
 	}
+	
+	function addRow(vote, index) {
+		setTimeout(function() {
+			$('#tbody').append('<tr><td>'+ (index + 1) +'</td><td><img width=45 src="https://robohash.org/'+vote.name+'"></td><td><img width=45 src="https://robohash.org/'+vote.name+'?set=set2"></td><td><img width=45 src="https://robohash.org/'+vote.name+'?set=set3"></td><td><img width=45 src="https://robohash.org/'+vote.name+'?set=set4"></td><td><img width=45 src="https://api.dicebear.com/9.x/notionists/svg?seed='+vote.name+'"></td><td><img width=45 src="https://api.dicebear.com/9.x/lorelei/svg?seed='+vote.name+'"></td><td><img width=45 src="https://api.dicebear.com/9.x/adventurer/svg?seed='+vote.name+'"></td><td>@'+vote.name+'</td><td>'+vote.votes+'</td><td>'+vote.share+'</td><td>'+vote.payout_value.toFixed(3)+' HBD</td><td>'+((100 * vote.share) / sum_share).toFixed(0)+' %</td></tr>');
+			$('#tfoot').html('<tr><td colspan="9">SUM:</td><td>'+sum.votes+'</td><td>'+sum.share.toFixed(0)+'</td><td>'+sum.hdb.toFixed(3)+' HDB</td><td></td></tr>');
+		}, timeout * index);
+	}
+
+	function createSVG() {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", svgWidth);
+        svg.setAttribute("height", svgHeight);
+		svg.setAttribute("fill", "red");
+        svg.setAttribute("viewBox", "0 0 "+svgWidth+" "+svgHeight+"");
+		
+		const img = document.createElementNS("http://www.w3.org/2000/svg", "image"); 
+		img.setAttribute("x", 0) ; 
+		img.setAttribute("y", 0); 
+		img.setAttribute("width", svgHeight); 
+		img.setAttribute("height", svgHeight); 
+		getImageBase64("https://robohash.org/"+authorResp.name+"?set=set4").then(imgBase64 => {
+			img.setAttribute("href", imgBase64);
+		});
+		svg.appendChild(img)
+		
+		const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		text.textContent = "Cat @"+authorResp.name + " proudly supported by Cats (='X'=)";
+		text.setAttribute("x", svgHeight) ; 
+		text.setAttribute("y", 32); 
+		text.setAttribute("font-family", '"Chicle", serif');
+		text.setAttribute("font-weight", "400");
+		text.setAttribute("font-size", "26px");
+		text.setAttribute("fill", "rgb(0, 0, 0");
+		svg.appendChild(text);
+		
+		const text2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		text2.textContent = "Last "+limit+" posts supported by "+sum.votes+" votes from "+sum.voters+" cats for a total of "+sum.hdb.toFixed(3)+" HDB.";
+		text2.setAttribute("x", svgHeight) ; 
+		text2.setAttribute("y", 64); 
+		text2.setAttribute("font-family", '"Chicle", serif');
+		text2.setAttribute("font-weight", "400");
+		text2.setAttribute("font-size", "18px");
+		text2.setAttribute("fill", "rgb(15, 15, 15");
+		svg.appendChild(text2);
+
+		const text3 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		text3.textContent = "Cat @"+authorResp.name+" has a power of "+authorResp.vesting_shares+" and "+authorResp.hbd_balance+"";
+		text3.setAttribute("x", svgHeight) ; 
+		text3.setAttribute("y", 86); 
+		text3.setAttribute("font-family", '"Chicle", serif');
+		text3.setAttribute("font-weight", "400");
+		text3.setAttribute("font-size", "18px");
+		text3.setAttribute("fill", "rgb(30, 30, 30");
+		svg.appendChild(text3);
+		
+		const now = new Date();
+		const dateTimeString = now.toLocaleString();	
+		const text4 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		text4.textContent = "Image generated at "+dateTimeString;
+		text4.setAttribute("x", svgHeight) ; 
+		text4.setAttribute("y", 108); 
+		text4.setAttribute("font-family", '"Chicle", serif');
+		text4.setAttribute("font-weight", "400");
+		text4.setAttribute("font-size", "18px");
+		text4.setAttribute("fill", "rgb(45, 45, 45");
+		svg.appendChild(text4);
+		
+		voters.forEach((vote, index) => addImg(svg, vote, index));
+		
+		document.getElementById("svgContainer").appendChild(svg);
+	}
+	function addImg(svg, vote, index) {
+		setTimeout(function() {
+			const img = document.createElementNS("http://www.w3.org/2000/svg", "image"); 
+			img.setAttribute("x", svgWidth - ((index + 1) * (svgWidth / cats)) - ((cats - index) / cats * 3 * Math.log(vote.share))) ; 
+			img.setAttribute("y", svgHeight - (4 * Math.log(vote.share))); 
+			img.setAttribute("width", 4 * Math.log(vote.share)); 
+			img.setAttribute("height", 4 * Math.log(vote.share)); 
+			getImageBase64("https://robohash.org/"+vote.name+"?set=set4").then(imgBase64 => {
+				img.setAttribute("href", imgBase64);
+			});
+			svg.appendChild(img);
+			const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+			text.setAttribute("writing-mode", "vertical-rl"); 
+			text.setAttribute("transform", "translate(0, 100) rotate(180, 100, 100)");
+			text.setAttribute("font-family", '"Chicle", serif');
+			text.setAttribute("font-weight", "400");
+			text.textContent = "@"+vote.name;
+			text.setAttribute("x", -1015 + ((index + 1) * (svgWidth / cats)) - ((cats - index) / (512 * cats * Math.log(vote.share)))) ; 
+			text.setAttribute("y", -100 + (4 * Math.log(vote.share))); 
+			text.setAttribute("fill", "rgb("+ parseInt((cats - index) * 200 / cats) +", "+ parseInt((cats - index) * 200 / cats) +", "+ parseInt((cats - index) * 200 / cats) +")");
+			svg.appendChild(text);
+		}, timeout * index);
+	}
+	function saveSVGAsPNG() { 
+		console.log('saveSVGAsPNG');
+		const svgElement = document.querySelector("svg"); 
+		const serializer = new XMLSerializer(); 
+		const svgString = serializer.serializeToString(svgElement); 
+		const canvas = document.createElement("canvas"); 
+		const ctx = canvas.getContext("2d"); 
+		const img = new Image(); 
+		img.onload = function() { 
+			canvas.width = img.width; 
+			canvas.height = img.height; 
+			ctx.drawImage(img, 0, 0); 
+			const pngDataUrl = 
+			canvas.toDataURL("image/png"); 
+			// Tworzymy link do pobrania 
+			const link = document.createElement("a"); 
+			link.href = pngDataUrl; 
+			link.download = "image.png"; 
+			link.click(); 
+		}; 
+		
+		img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgString))); 
+	}
+	function getRandomNumber(min, max) { 
+		return Math.floor(Math.random() * (max - min + 1)) + min; 
+	}
+	
+function getImageBase64(url) { 
+	return fetch(url)
+		.then(response => response.blob()) 
+		.then(convertBlobToBase64) 
+		.catch(error => { 
+			console.error("Error fetching the image:", error); 
+		}); 
+} 
+function convertBlobToBase64(blob) { 
+	return new Promise((resolve, reject) => { 
+		const reader = new FileReader(); 
+		reader.onloadend = () => resolve(reader.result); 
+		reader.onerror = reject; reader.readAsDataURL(blob); 
+	}); 
+}
+
+
 
 </script>
 <style>
 td, th {
   text-align: right;
-  font-family: "Lucida Console", "Courier New", monospace;
+  font-family: "Chicle", serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 24px;
 }
 </style>
 </head>
@@ -99,17 +273,29 @@ td, th {
   <span class="input-group-text" id="basic-addon1">@</span>
   <input type="text" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" id="author" value="fat.music">
   <span class="input-group-text" id="basic-addon1">#</span>
-  <input type="text" class="form-control" placeholder="Limit" aria-label="Limit" aria-describedby="basic-addon1" value=3 id="limit">
+  <input type="text" class="form-control" placeholder="Limit" aria-label="Limit" aria-describedby="basic-addon1" value=5 id="limit">
   <button class="btn btn-outline-secondary" type="button" id="submit">Submit</button>
 </div>
 							</div>
 
 						</div>
+		<div class="row">
+			<div class="col-md-12">
+				<div id="svgContainer"></div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-12">
+		<button id="saveButton">Save as PNG</button>
+			</div>
+		</div>
 						<div class="row">
-							<div class="col-md-12">
-								<table class="table table-dark table-striped table-sm">
+							<div class="col-md-12 table-responsive">
+								<table class="table table-dark table-striped table-sm table-bordered align-middle">
   <thead>
     <tr>
+	  <th scope="col">No</th>
+	  <th scope="col" colspan="7">Avatars</th>
       <th scope="col">User</th>
       <th scope="col">Votes</th>
       <th scope="col">Share</th>
@@ -119,12 +305,15 @@ td, th {
   </thead>
   <tbody id="tbody">
   </tbody>
+ <tfoot id="tfoot">
+ </tfoot>
 								<table>
 							</div>
 						</div>
 				
 			</div>
 		</div>
+
 		<div class="row">
 			<div class="col-md-12">
 			<p class="lead">
