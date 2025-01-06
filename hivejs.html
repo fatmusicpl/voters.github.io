@@ -10,15 +10,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@hiveio/hive-js/dist/hive.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chicle&display=swap" rel="stylesheet">
 <script>
 	var B = 1000000000;
-	var timeout = 200;
+	var timeout = 750;
 	var svgWidth = 1200;
-	var svgHeight = 400;
+	var svgHeight = 420;
 	var cats = 50;
 	var author = 'fat.music';
-	var limit = 5;
+	var limit = 10;
 	var voters = [];
 	var sum_share = 0;
 	var sum = {
@@ -122,6 +121,7 @@ hive.api.getAccounts([author], function(err, response){
         svg.setAttribute("height", svgHeight);
 		svg.setAttribute("fill", "red");
         svg.setAttribute("viewBox", "0 0 "+svgWidth+" "+svgHeight+"");
+
 		
 		const img = document.createElementNS("http://www.w3.org/2000/svg", "image"); 
 		img.setAttribute("x", 0) ; 
@@ -137,9 +137,8 @@ hive.api.getAccounts([author], function(err, response){
 		text.textContent = "Cat @"+authorResp.name + " proudly supported by Cats (='X'=)";
 		text.setAttribute("x", svgHeight) ; 
 		text.setAttribute("y", 32); 
-		text.setAttribute("font-family", '"Chicle", serif');
-		text.setAttribute("font-weight", "400");
-		text.setAttribute("font-size", "26px");
+		text.setAttribute("font-size", "22px");
+		text.setAttribute("font-family", "cursive");
 		text.setAttribute("fill", "rgb(0, 0, 0");
 		svg.appendChild(text);
 		
@@ -147,20 +146,18 @@ hive.api.getAccounts([author], function(err, response){
 		text2.textContent = "Last "+limit+" posts supported by "+sum.votes+" votes from "+sum.voters+" cats for a total of "+sum.hdb.toFixed(3)+" HDB.";
 		text2.setAttribute("x", svgHeight) ; 
 		text2.setAttribute("y", 64); 
-		text2.setAttribute("font-family", '"Chicle", serif');
-		text2.setAttribute("font-weight", "400");
-		text2.setAttribute("font-size", "18px");
+		text2.setAttribute("font-size", "14px");
 		text2.setAttribute("fill", "rgb(15, 15, 15");
+		text2.setAttribute("font-family", "cursive");
 		svg.appendChild(text2);
 
 		const text3 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		text3.textContent = "Cat @"+authorResp.name+" has a power of "+authorResp.vesting_shares+" and "+authorResp.hbd_balance+"";
+		text3.textContent = "Cat @"+authorResp.name+" has a power of "+authorResp.vesting_shares+" and "+authorResp.hbd_balance+" + "+authorResp.savings_hbd_balance+" in savings";
 		text3.setAttribute("x", svgHeight) ; 
 		text3.setAttribute("y", 86); 
-		text3.setAttribute("font-family", '"Chicle", serif');
-		text3.setAttribute("font-weight", "400");
-		text3.setAttribute("font-size", "18px");
+		text3.setAttribute("font-size", "14px");
 		text3.setAttribute("fill", "rgb(30, 30, 30");
+		text3.setAttribute("font-family", "cursive");
 		svg.appendChild(text3);
 		
 		const now = new Date();
@@ -169,10 +166,9 @@ hive.api.getAccounts([author], function(err, response){
 		text4.textContent = "Image generated at "+dateTimeString;
 		text4.setAttribute("x", svgHeight) ; 
 		text4.setAttribute("y", 108); 
-		text4.setAttribute("font-family", '"Chicle", serif');
-		text4.setAttribute("font-weight", "400");
-		text4.setAttribute("font-size", "18px");
+		text4.setAttribute("font-size", "14px");
 		text4.setAttribute("fill", "rgb(45, 45, 45");
+		text4.setAttribute("font-family", "cursive");
 		svg.appendChild(text4);
 		
 		voters.forEach((vote, index) => addImg(svg, vote, index));
@@ -193,12 +189,11 @@ hive.api.getAccounts([author], function(err, response){
 			const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 			text.setAttribute("writing-mode", "vertical-rl"); 
 			text.setAttribute("transform", "translate(0, 100) rotate(180, 100, 100)");
-			text.setAttribute("font-family", '"Chicle", serif');
-			text.setAttribute("font-weight", "400");
 			text.textContent = "@"+vote.name;
 			text.setAttribute("x", -1015 + ((index + 1) * (svgWidth / cats)) - ((cats - index) / (512 * cats * Math.log(vote.share)))) ; 
 			text.setAttribute("y", -100 + (4 * Math.log(vote.share))); 
 			text.setAttribute("fill", "rgb("+ parseInt((cats - index) * 200 / cats) +", "+ parseInt((cats - index) * 200 / cats) +", "+ parseInt((cats - index) * 200 / cats) +")");
+			text.setAttribute("font-family", "cursive");
 			svg.appendChild(text);
 		}, timeout * index);
 	}
@@ -251,7 +246,6 @@ function convertBlobToBase64(blob) {
 <style>
 td, th {
   text-align: right;
-  font-family: "Chicle", serif;
   font-weight: 400;
   font-style: normal;
   font-size: 24px;
@@ -273,7 +267,7 @@ td, th {
   <span class="input-group-text" id="basic-addon1">@</span>
   <input type="text" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" id="author" value="fat.music">
   <span class="input-group-text" id="basic-addon1">#</span>
-  <input type="text" class="form-control" placeholder="Limit" aria-label="Limit" aria-describedby="basic-addon1" value=5 id="limit">
+  <input type="text" class="form-control" placeholder="Limit" aria-label="Limit" aria-describedby="basic-addon1" value=10 id="limit">
   <button class="btn btn-outline-secondary" type="button" id="submit">Submit</button>
 </div>
 							</div>
@@ -285,8 +279,8 @@ td, th {
 			</div>
 		</div>
 		<div class="row">
-			<div class="col-md-12">
-		<button id="saveButton">Save as PNG</button>
+			<div class="col-md-12 p-3">
+		<button id="saveButton" class="btn btn-outline-secondary">Save Image as PNG</button>
 			</div>
 		</div>
 						<div class="row">
