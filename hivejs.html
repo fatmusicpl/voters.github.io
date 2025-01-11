@@ -32,20 +32,25 @@
 	};
 	authorResp = [];
 
-hive.api.getAccounts([author], function(err, response){
-	authorResp = response[0];
-    console.log(err, authorResp);
-});
+
 
 
 	$(document).ready(function(){
 		$("#submit").click(function(event){
 			event.preventDefault();
+			
 			author = $('#author').val();
+			hive.api.getAccounts([author], function(err, response){
+				authorResp = response[0];
+				console.log(err, authorResp);
+			});
+			
+
 			limit = $('#limit').val();
 			query = {
 				tag: author,
-				limit: limit
+				limit: limit,
+				offset: 10,
 			};
 			loadHiveDiscussionsByBlog();
 
@@ -63,42 +68,47 @@ hive.api.getAccounts([author], function(err, response){
 			voters: 0,
 		};
 		hive.api.getDiscussionsByBlog(query, function(err, posts) {
-			posts.forEach(function(post) {
-				if (author === post.author) {
-					let net_rshares = post.net_rshares;
-					let pending_payout_value = parseFloat(post.pending_payout_value.replace(' HBD'));
-					let total_payout_value = parseFloat(post.total_payout_value.replace(' HBD'));
-					let payout_value = pending_payout_value + total_payout_value;
-					post.active_votes.forEach(function(vote) {
-						sum_share += vote.rshares;
-						sum = {
-							share: sum.share + vote.rshares,
-							votes: sum.votes + 1,
-							hdb: sum.hdb + (vote.rshares / net_rshares) * payout_value,
-							voters: sum.voters,
-						}
-						if (voter = voters.find(v => v.name === vote.voter)) {
-							voter.votes++;
-							voter.share += vote.rshares;
-							voter.payout_value += (vote.rshares / net_rshares) * payout_value;
-						} else {
-							voters.push({
-								name: vote.voter,
-								votes: 1,
-								share: vote.rshares,
-								payout_value: (vote.rshares / net_rshares) * payout_value,
-							});
-							sum.voters = sum.voters + 1;
-						}
-					});
-					console.log(net_rshares);
-				}
-			});
-			voters.sort((a, b) => b.share - a.share);
-			voters = voters.slice(0, cats);
-			voters.sort((a, b) => a.share - b.share);
-			drawTable();
-			createSVG();
+			console.log(err, posts);
+			setTimeout(function() {
+				console.log(err, posts);
+				posts.forEach(function(post) {
+					if (author === post.author) {
+						let net_rshares = post.net_rshares;
+						let pending_payout_value = parseFloat(post.pending_payout_value.replace(' HBD'));
+						let total_payout_value = parseFloat(post.total_payout_value.replace(' HBD'));
+						let payout_value = pending_payout_value + total_payout_value;
+						post.active_votes.forEach(function(vote) {
+							sum_share += vote.rshares;
+							sum = {
+								share: sum.share + vote.rshares,
+								votes: sum.votes + 1,
+								hdb: sum.hdb + (vote.rshares / net_rshares) * payout_value,
+								voters: sum.voters,
+							}
+							if (voter = voters.find(v => v.name === vote.voter)) {
+								voter.votes++;
+								voter.share += vote.rshares;
+								voter.payout_value += (vote.rshares / net_rshares) * payout_value;
+							} else {
+								voters.push({
+									name: vote.voter,
+									votes: 1,
+									share: vote.rshares,
+									payout_value: (vote.rshares / net_rshares) * payout_value,
+								});
+								sum.voters = sum.voters + 1;
+							}
+						});
+						console.log(net_rshares);
+					}
+				});
+				voters.sort((a, b) => b.share - a.share);
+				voters = voters.slice(0, cats);
+				voters.sort((a, b) => a.share - b.share);
+				drawTable();
+				createSVG();
+			}, timeout * limit / 10);
+
 		});
 		
 	}
