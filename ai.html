@@ -171,16 +171,16 @@
             predict(model_scc, newData_scc);
 			
 			 // Przygotowanie danych dla HBD
-            const { X: X_hdb, y: y_hdb } = prepareData(stakingData.HBD, priceData.HBD);
+            const { X: X_hbd, y: y_hbd } = prepareData(stakingData.HBD, priceData.HBD);
 
             // Budowa i trenowanie modelu dla HBD
-            const model_hdb = buildModel();
-            await trainModel(model_hdb, X_hdb, y_hdb);
+            const model_hbd = buildModel();
+            await trainModel(model_hbd, X_hbd, y_hbd);
 
             // Przewidywanie dla nowych danych (przykład)
-            const newData_hdb = [[0.00001011, 0.15 / 365]]; // Nowa cena i nagroda za staking
+            const newData_hbd = [[0.00001011, 0.15 / 365]]; // Nowa cena i nagroda za staking
             console.log('Przewidywanie dla HBD:');
-            predict(model_hdb, newData_hdb);
+            predict(model_hbd, newData_hbd);
         }
 
         main();
