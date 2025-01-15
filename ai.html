@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Przewidywanie inwestycji w kryptowaluty</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+</head>
+<body>
+    <h1>Przewidywanie inwestycji w kryptowaluty</h1>
+    <p>Otwórz konsolę przeglądarki, aby zobaczyć wyniki.</p>
+
+    <script>
+        // Dane procentu za staking
+        const stakingData = {
+            PIVX: [
+                { date: '2024-12-31', reward: 0.0366 },
+                { date: '2025-01-01', reward: 0.0289 },
+                { date: '2025-01-02', reward: 0.0578 },
+                { date: '2025-01-03', reward: 0.0365 },
+                { date: '2025-01-04', reward: 0.0395 },
+                { date: '2025-01-05', reward: 0.0425 },
+                { date: '2025-01-06', reward: 0.0364 },
+                { date: '2025-01-07', reward: 0.0533 },
+                { date: '2025-01-08', reward: 0.0222 },
+                { date: '2025-01-09', reward: 0.0489 },
+                { date: '2025-01-10', reward: 0.0444 },
+                { date: '2025-01-11', reward: 0.0344 },
+                { date: '2025-01-12', reward: 0.0424 },
+                { date: '2025-01-13', reward: 0.0451 },
+                { date: '2025-01-14', reward: 0.0353 },
+                { date: '2025-01-15', reward: 0.0543 }
+            ],
+            SCC: [
+                { date: '2025-01-13', reward: 0.0013 },
+                { date: '2025-01-14', reward: 0.0004 },
+                { date: '2025-01-15', reward: 0.0005 }
+            ],
+			HBD: [
+				{ date: '2025-01-09', reward: 0.15 / 365 },
+                { date: '2025-01-10', reward: 0.15 / 365 },
+				{ date: '2025-01-11', reward: 0.15 / 365 },
+                { date: '2025-01-12', reward: 0.15 / 365 },
+                { date: '2025-01-13', reward: 0.15 / 365 },
+                { date: '2025-01-14', reward: 0.15 / 365 },
+                { date: '2025-01-15', reward: 0.15 / 365 }
+            ]
+        };
+
+        // Symulowane dane historyczne cen (można zastąpić danymi z API)
+        const priceData = {
+            PIVX: [
+                { date: '2024-12-31', price: 0.00000344 },
+                { date: '2025-01-01', price: 0.00000331 },
+                { date: '2025-01-02', price: 0.00000342 },
+                { date: '2025-01-03', price: 0.00000340 },
+                { date: '2025-01-04', price: 0.00000348 },
+                { date: '2025-01-05', price: 0.00000344 },
+                { date: '2025-01-06', price: 0.00000346 },
+                { date: '2025-01-07', price: 0.00000333 },
+                { date: '2025-01-08', price: 0.00000318 },
+                { date: '2025-01-09', price: 0.00000333 },
+                { date: '2025-01-10', price: 0.00000322 },
+                { date: '2025-01-11', price: 0.00000303 },
+                { date: '2025-01-12', price: 0.00000300 },
+                { date: '2025-01-13', price: 0.00000288 },
+                { date: '2025-01-14', price: 0.00000284 },
+                { date: '2025-01-15', price: 0.00000287 }
+            ],
+            SCC: [
+				{ date: '2025-01-09', price: 0.000000198718 },
+				{ date: '2025-01-10', price: 0.000000182857 },
+				{ date: '2025-01-11', price: 0.000000183555 },
+				{ date: '2025-01-12', price: 0.000000200585 },
+                { date: '2025-01-13', price: 0.000000199968 },
+                { date: '2025-01-14', price: 0.000000199920 },
+                { date: '2025-01-15', price: 0.000000181695 }
+            ],
+            HBD: [
+				{ date: '2025-01-09', price: 0.00001062 },
+				{ date: '2025-01-10', price: 0.00001112 },
+				{ date: '2025-01-11', price: 0.00001066 },
+				{ date: '2025-01-12', price: 0.00001064 },
+                { date: '2025-01-13', price: 0.00001050 },
+                { date: '2025-01-14', price: 0.00001075 },
+                { date: '2025-01-15', price: 0.00001011 }
+            ]
+        };
+	
+        // Przygotowanie danych
+        function prepareData(stakingData, priceData) {
+            const X = []; // Dane wejściowe: [cena, procent stakingu]
+            const y = []; // Dane wyjściowe: 1 (inwestuj), 0 (nie inwestuj)
+
+            for (let i = 0; i < stakingData.length - 1; i++) {
+                const stakingEntry = stakingData[i];
+                const priceEntry = priceData.find(p => p.date === stakingEntry.date);
+                const nextPriceEntry = priceData.find(p => p.date === stakingData[i + 1].date);
+
+                if (priceEntry && nextPriceEntry) {
+                    const cena = priceEntry.price;
+                    const nagroda = stakingEntry.reward;
+                    const zmianaCeny = (nextPriceEntry.price - priceEntry.price) / priceEntry.price; // Procentowa zmiana ceny
+
+                    X.push([cena, nagroda]);
+                    // Inwestuj, jeśli (nagroda + zmiana ceny) > 0
+					console.log('nagroda:', nagroda, 'zmianaCeny:', zmianaCeny, ' = nagroda + zmianaCeny:', (nagroda + zmianaCeny));
+                    y.push((nagroda + zmianaCeny) > 0 ? 1 : 0);
+                }
+            }
+
+            return { X, y };
+        }
+
+
+
+        // Budowa modelu
+        function buildModel() {
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ units: 10, inputShape: [2], activation: 'relu' })); // Warstwa ukryta
+            model.add(tf.layers.dense({ units: 1, activation: 'sigmoid' })); // Warstwa wyjściowa (klasyfikacja binarna)
+            model.compile({ optimizer: 'adam', loss: 'binaryCrossentropy', metrics: ['accuracy'] });
+            return model;
+        }
+
+        // Trenowanie modelu
+        async function trainModel(model, X, y) {
+            const X_tensor = tf.tensor2d(X);
+            const y_tensor = tf.tensor2d(y, [y.length, 1]);
+
+            await model.fit(X_tensor, y_tensor, {
+                epochs: 100,
+                batchSize: 2,
+                verbose: 1
+            });
+
+            console.log('Trening zakończony.');
+        }
+
+        // Przewidywanie
+        function predict(model, X) {
+            const X_tensor = tf.tensor2d(X);
+            const predictions = model.predict(X_tensor);
+            predictions.print();
+        }
+
+        // Główna funkcja
+        async function main() {
+            // Przygotowanie danych dla PIVX
+            const { X: X_pivx, y: y_pivx } = prepareData(stakingData.PIVX, priceData.PIVX);
+
+            // Budowa i trenowanie modelu dla PIVX
+            const model_pivx = buildModel();
+            await trainModel(model_pivx, X_pivx, y_pivx);
+
+            // Przewidywanie dla nowych danych (przykład)
+            const newData_pivx = [[0.0000029011387, 0.045]]; // Nowa cena i nagroda za staking
+            console.log('Przewidywanie dla PIVX:');
+            predict(model_pivx, newData_pivx);
+
+            // Przygotowanie danych dla SCC
+            const { X: X_scc, y: y_scc } = prepareData(stakingData.SCC, priceData.SCC);
+
+            // Budowa i trenowanie modelu dla SCC
+            const model_scc = buildModel();
+            await trainModel(model_scc, X_scc, y_scc);
+
+            // Przewidywanie dla nowych danych (przykład)
+            const newData_scc = [[0.00000018094703, 0.00055]]; // Nowa cena i nagroda za staking
+            console.log('Przewidywanie dla SCC:');
+            predict(model_scc, newData_scc);
+			
+			 // Przygotowanie danych dla HBD
+            const { X: X_hdb, y: y_hdb } = prepareData(stakingData.HBD, priceData.HBD);
+
+            // Budowa i trenowanie modelu dla HBD
+            const model_hdb = buildModel();
+            await trainModel(model_hdb, X_hdb, y_hdb);
+
+            // Przewidywanie dla nowych danych (przykład)
+            const newData_hdb = [[0.00001011, 0.15 / 365]]; // Nowa cena i nagroda za staking
+            console.log('Przewidywanie dla HBD:');
+            predict(model_hdb, newData_hdb);
+        }
+
+        main();
+    </script>
+</body>
+</html>
