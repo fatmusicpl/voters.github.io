@@ -49,7 +49,13 @@
                 { date: '2025-01-16', reward: 0.15 / 365 }
             ]
         };
-
+	    
+        // Funkcja do obliczania średniej nagrody
+        function calculateAverageReward(stakingData) {
+            const rewards = stakingData.map(entry => entry.reward);
+            const sum = rewards.reduce((acc, reward) => acc + reward, 0);
+            return sum / rewards.length;
+        }
 	    
         // Funkcja do pobierania danych historycznych z CoinGecko API
         async function fetchHistoricalData(cryptoId, days = 30) {
@@ -163,8 +169,12 @@
                 const model = buildModel();
                 await trainModel(model, X, y);
 
+                // Obliczenie średniej nagrody dla danej kryptowaluty
+                const averageReward = calculateAverageReward(stakingData[crypto.name]);
+                console.log(`Średnia nagroda za staking dla ${crypto.name}:`, averageReward);
+
                 // Przewidywanie dla nowych danych (przykład)
-                const newData = [[priceData[priceData.length - 1].price, 0.045]]; // Ostatnia znana cena i przykładowa nagroda za staking
+                const newData = [[priceData[priceData.length - 1].price, averageReward]]; // Ostatnia znana cena i przykładowa nagroda za staking
                 console.log(`Przewidywanie dla ${crypto.name}:`);
                 predict(model, newData);
             }
