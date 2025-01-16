@@ -86,7 +86,20 @@
                 { date: '2025-01-15', price: 0.00001011 }
             ]
         };
-	
+	    
+        // Funkcja do pobierania aktualnych kursów z CoinGecko API
+        async function fetchCryptoPrices(cryptoIds) {
+            const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoIds.join(',')}&vs_currencies=btc`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Błąd podczas pobierania danych:', error);
+                return null;
+            }
+        }
+	    
         // Przygotowanie danych
         function prepareData(stakingData, priceData) {
             const X = []; // Dane wejściowe: [cena, procent stakingu]
@@ -146,6 +159,16 @@
 
         // Główna funkcja
         async function main() {
+            // Pobieranie aktualnych kursów kryptowalut
+            const cryptoIds = ['pivx', 'scc', 'hbd']; // Identyfikatory kryptowalut w CoinGecko
+            const prices = await fetchCryptoPrices(cryptoIds);
+
+            if (!prices) {
+                console.error('Nie udało się pobrać kursów kryptowalut.');
+                return;
+            }
+
+            console.log('Aktualne kursy kryptowalut:', prices);
             // Przygotowanie danych dla PIVX
             const { X: X_pivx, y: y_pivx } = prepareData(stakingData.PIVX, priceData.PIVX);
 
