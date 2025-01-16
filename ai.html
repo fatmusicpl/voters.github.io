@@ -87,6 +87,19 @@
             ]
         };
 	    
+        // Funkcja do pobierania danych historycznych z CoinGecko API
+        async function fetchHistoricalData(cryptoId, days = 30) {
+            const apiUrl = `https://api.coingecko.com/api/v3/coins/${cryptoId}/market_chart?vs_currency=btc&days=${days}`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                return data.prices; // Zwraca tablicę z danymi historycznymi [timestamp, cena]
+            } catch (error) {
+                console.error('Błąd podczas pobierania danych historycznych:', error);
+                return null;
+            }
+        }
+	    
         // Funkcja do pobierania aktualnych kursów z CoinGecko API
         async function fetchCryptoPrices(cryptoIds) {
             const apiUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoIds.join(',')}&vs_currencies=btc`;
@@ -125,8 +138,6 @@
             return { X, y };
         }
 
-
-
         // Budowa modelu
         function buildModel() {
             const model = tf.sequential();
@@ -156,57 +167,45 @@
             const predictions = model.predict(X_tensor);
             predictions.print();
         }
-
         // Główna funkcja
         async function main() {
-            // Pobieranie aktualnych kursów kryptowalut
-            const cryptoIds = ['pivx', 'scc', 'hive_dollar']; // Identyfikatory kryptowalut w CoinGecko
-            const prices = await fetchCryptoPrices(cryptoIds);
+            // Lista kryptowalut do pobrania danych
+            const cryptocurrencies = [
+                { id: 'pivx', name: 'PIVX' },
+                { id: 'scc', name: 'SCC' },
+                { id: 'hive_dollar', name: 'HBD' }
+            ];
 
-            if (!prices) {
-                console.error('Nie udało się pobrać kursów kryptowalut.');
-                return;
+            // Pobieranie danych historycznych dla każdej kryptowaluty
+            for (const crypto of cryptocurrencies) {
+                const historicalData = await fetchHistoricalData(crypto.id, 30);
+                if (!historicalData) {
+                    console.error(`Nie udało się pobrać danych historycznych dla ${crypto.name}.`);
+                    continue;
+                }
+
+                // Przetworzenie danych historycznych na format priceData
+                const priceData = historicalData.map(([timestamp, price]) => ({
+                    date: new Date(timestamp).toISOString().split('T')[0], // Konwersja timestamp na datę
+                    price: price
+                }));
+
+                console.log(`Dane historyczne dla ${crypto.name}:`, priceData);
+
+                // Przygotowanie danych
+                const { X, y } = prepareData(stakingData[crypto.name], priceData);
+
+                // Budowa i trenowanie modelu
+                const model = buildModel();
+                await trainModel(model, X, y);
+
+                // Przewidywanie dla nowych danych (przykład)
+                const newData = [[priceData[priceData.length - 1].price, 0.045]]; // Ostatnia znana cena i przykładowa nagroda za staking
+                console.log(`Przewidywanie dla ${crypto.name}:`);
+                predict(model, newData);
             }
-
-            console.log('Aktualne kursy kryptowalut:', prices);
-		
-            // Przygotowanie danych dla PIVX
-            const { X: X_pivx, y: y_pivx } = prepareData(stakingData.PIVX, priceData.PIVX);
-
-            // Budowa i trenowanie modelu dla PIVX
-            const model_pivx = buildModel();
-            await trainModel(model_pivx, X_pivx, y_pivx);
-
-            // Przewidywanie dla nowych danych (przykład)
-            const newData_pivx = [[prices.pivx.usd, 0.045]]; // Nowa cena i nagroda za staking
-            console.log('Przewidywanie dla PIVX:');
-            predict(model_pivx, newData_pivx);
-
-            // Przygotowanie danych dla SCC
-            const { X: X_scc, y: y_scc } = prepareData(stakingData.SCC, priceData.SCC);
-
-            // Budowa i trenowanie modelu dla SCC
-            const model_scc = buildModel();
-            await trainModel(model_scc, X_scc, y_scc);
-
-            // Przewidywanie dla nowych danych (przykład)
-            const newData_scc = [[prices.scc.usd, 0.00055]]; // Nowa cena i nagroda za staking
-            console.log('Przewidywanie dla SCC:');
-            predict(model_scc, newData_scc);
-			
-			 // Przygotowanie danych dla HBD
-            const { X: X_hbd, y: y_hbd } = prepareData(stakingData.HBD, priceData.HBD);
-
-            // Budowa i trenowanie modelu dla HBD
-            const model_hbd = buildModel();
-            await trainModel(model_hbd, X_hbd, y_hbd);
-
-            // Przewidywanie dla nowych danych (przykład)
-            const newData_hbd = [[prices.hive_dollar.btc, 0.15 / 365]]; // Nowa cena i nagroda za staking
-            console.log('Przewidywanie dla HBD:');
-            predict(model_hbd, newData_hbd);
         }
-
+	    
         main();
     </script>
 </body>
