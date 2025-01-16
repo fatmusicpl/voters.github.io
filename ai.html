@@ -160,7 +160,7 @@
         // Główna funkcja
         async function main() {
             // Pobieranie aktualnych kursów kryptowalut
-            const cryptoIds = ['pivx', 'scc', 'hbd']; // Identyfikatory kryptowalut w CoinGecko
+            const cryptoIds = ['pivx', 'scc', 'hive_dollar']; // Identyfikatory kryptowalut w CoinGecko
             const prices = await fetchCryptoPrices(cryptoIds);
 
             if (!prices) {
@@ -169,6 +169,7 @@
             }
 
             console.log('Aktualne kursy kryptowalut:', prices);
+		
             // Przygotowanie danych dla PIVX
             const { X: X_pivx, y: y_pivx } = prepareData(stakingData.PIVX, priceData.PIVX);
 
@@ -177,7 +178,7 @@
             await trainModel(model_pivx, X_pivx, y_pivx);
 
             // Przewidywanie dla nowych danych (przykład)
-            const newData_pivx = [[0.0000029011387, 0.045]]; // Nowa cena i nagroda za staking
+            const newData_pivx = [[prices.pivx.usd, 0.045]]; // Nowa cena i nagroda za staking
             console.log('Przewidywanie dla PIVX:');
             predict(model_pivx, newData_pivx);
 
@@ -189,7 +190,7 @@
             await trainModel(model_scc, X_scc, y_scc);
 
             // Przewidywanie dla nowych danych (przykład)
-            const newData_scc = [[0.00000018094703, 0.00055]]; // Nowa cena i nagroda za staking
+            const newData_scc = [[prices.scc.usd, 0.00055]]; // Nowa cena i nagroda za staking
             console.log('Przewidywanie dla SCC:');
             predict(model_scc, newData_scc);
 			
@@ -201,7 +202,7 @@
             await trainModel(model_hbd, X_hbd, y_hbd);
 
             // Przewidywanie dla nowych danych (przykład)
-            const newData_hbd = [[0.00001011, 0.15 / 365]]; // Nowa cena i nagroda za staking
+            const newData_hbd = [[prices.hive_dollar.btc, 0.15 / 365]]; // Nowa cena i nagroda za staking
             console.log('Przewidywanie dla HBD:');
             predict(model_hbd, newData_hbd);
         }
