@@ -36,10 +36,10 @@
                 { date: '2025-01-14', reward: 0.0004 },
                 { date: '2025-01-15', reward: 0.0005 }
             ],
-			HBD: [
-				{ date: '2025-01-09', reward: 0.15 / 365 },
+	    HBD: [
+		{ date: '2025-01-09', reward: 0.15 / 365 },
                 { date: '2025-01-10', reward: 0.15 / 365 },
-				{ date: '2025-01-11', reward: 0.15 / 365 },
+		{ date: '2025-01-11', reward: 0.15 / 365 },
                 { date: '2025-01-12', reward: 0.15 / 365 },
                 { date: '2025-01-13', reward: 0.15 / 365 },
                 { date: '2025-01-14', reward: 0.15 / 365 },
@@ -47,45 +47,6 @@
             ]
         };
 
-        // Symulowane dane historyczne cen (można zastąpić danymi z API)
-        const priceData = {
-            PIVX: [
-                { date: '2024-12-31', price: 0.00000344 },
-                { date: '2025-01-01', price: 0.00000331 },
-                { date: '2025-01-02', price: 0.00000342 },
-                { date: '2025-01-03', price: 0.00000340 },
-                { date: '2025-01-04', price: 0.00000348 },
-                { date: '2025-01-05', price: 0.00000344 },
-                { date: '2025-01-06', price: 0.00000346 },
-                { date: '2025-01-07', price: 0.00000333 },
-                { date: '2025-01-08', price: 0.00000318 },
-                { date: '2025-01-09', price: 0.00000333 },
-                { date: '2025-01-10', price: 0.00000322 },
-                { date: '2025-01-11', price: 0.00000303 },
-                { date: '2025-01-12', price: 0.00000300 },
-                { date: '2025-01-13', price: 0.00000288 },
-                { date: '2025-01-14', price: 0.00000284 },
-                { date: '2025-01-15', price: 0.00000287 }
-            ],
-            SCC: [
-				{ date: '2025-01-09', price: 0.000000198718 },
-				{ date: '2025-01-10', price: 0.000000182857 },
-				{ date: '2025-01-11', price: 0.000000183555 },
-				{ date: '2025-01-12', price: 0.000000200585 },
-                { date: '2025-01-13', price: 0.000000199968 },
-                { date: '2025-01-14', price: 0.000000199920 },
-                { date: '2025-01-15', price: 0.000000181695 }
-            ],
-            HBD: [
-				{ date: '2025-01-09', price: 0.00001062 },
-				{ date: '2025-01-10', price: 0.00001112 },
-				{ date: '2025-01-11', price: 0.00001066 },
-				{ date: '2025-01-12', price: 0.00001064 },
-                { date: '2025-01-13', price: 0.00001050 },
-                { date: '2025-01-14', price: 0.00001075 },
-                { date: '2025-01-15', price: 0.00001011 }
-            ]
-        };
 	    
         // Funkcja do pobierania danych historycznych z CoinGecko API
         async function fetchHistoricalData(cryptoId, days = 30) {
@@ -172,7 +133,7 @@
             // Lista kryptowalut do pobrania danych
             const cryptocurrencies = [
                 { id: 'pivx', name: 'PIVX' },
-                { id: 'scc', name: 'SCC' },
+                { id: 'stakecube', name: 'SCC' },
                 { id: 'hive_dollar', name: 'HBD' }
             ];
 
