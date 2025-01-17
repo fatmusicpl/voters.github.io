@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI przewidujące ceny - Sieć Neuronowa</title>
+    <!-- Dodaj TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <!-- Dodaj Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Dodaj prosty CSS -->
+    <style>
+        #chartContainer {
+            width: 100%;
+            max-width: 1024px;
+            margin: 10px auto;
+        }
+        button {
+            display: block;
+            margin: 10px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI przewidujące ceny w przyszłości</h1>
+    <p>Prosta sieć neuronowa ucząca się przewidywać ceny na podstawie historycznych danych.</p>
+
+    <!-- Formularz do ustawienia parametrów treningu -->
+    <div>
+        <label for="epochs">Liczba epok (im więcej tym wolniej, ale lepsze wyniki):</label>
+        <input type="number" id="epochs" value="250" min="1">
+    </div>
+    <div>
+        <label for="batchSize">Rozmiar batcha (im mniejszy tym wolniej, ale lepsze wyniki):</label>
+        <select id="batchSize">
+            <option value="64">64</option>
+            <option value="32">32</option>
+            <option value="16">16</option>
+            <option value="8">8</option>
+			<option value="4">4</option>
+			<option value="2">2</option>
+        </select>
+    </div>
+    <button onclick="startTraining()">Rozpocznij trening</button>
+
+    <!-- Kontener na wykres -->
+    <div id="chartContainer">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <!-- Przycisk do testowania modelu -->
+    <button onclick="testUserInput()">Przetestuj model</button>
+
+    <!-- Wyświetlanie wyników -->
+    <p id="output"></p>
+
+    <script>
+        let model;
+        let maxPrice = 0; // Maksymalna cena do normalizacji
+        let chart; // Wykres
+        let historyData = []; // Dane historyczne
+
+        // Funkcja do generowania danych treningowych
+        function generateData(numSamples) {
+            const inputs = [];
+            const outputs = [];
+            for (let i = 0; i < numSamples; i++) {
+                // Generuj ceny od dnia 0 do -30
+                const prices = [];
+                let currentPrice = 100; // Początkowa cena (dzień 0)
+				let day = 0;
+                for (; day < 71; day++) { // Generuj ceny od dnia 0 do 30
+                    prices.push(currentPrice);
+					console.log('Cena w dniu: ', day, currentPrice);
+                    // Cena rośnie o 1% dziennie + losowe odchylenie
+                    currentPrice /= 1 + (0.01 + (Math.random() - 0.5) * 0.1); // Używamy dzielenia, aby cofnąć się w czasie
+                }
+				for (; day < 101; day++) { // Generuj ceny od dnia 0 do 30
+                    prices.push(currentPrice);
+					console.log('Cena w dniu: ', day, currentPrice);
+                    // Cena rośnie o 1% dziennie + losowe odchylenie
+                    currentPrice *= 1 + (0.01 + (Math.random() - 0.5) * 0.1); // Używamy dzielenia, aby cofnąć się w czasie
+                }
+				
+                inputs.push(prices.slice(0, 100)); // Używamy pierwszych 30 dni jako danych wejściowych
+				outputs.push(prices[100]); // Przewidujemy cenę na 31. dzień
+            }
+            return { inputs, outputs };
+        }
+
+        // Funkcja do normalizacji danych (skalowanie do zakresu [0, 1])
+        function normalizeData(data, max) {
+            return data.map(x => x / max);
+        }
+
+        // Funkcja do denormalizacji danych (przywracanie oryginalnej skali)
+        function denormalizeData(data, max) {
+            return data.map(x => x * max);
+        }
+
+        // Funkcja do znajdowania maksymalnej wartości w tablicy
+        function findMaxValue(array) {
+            let max = -Infinity;
+            for (let value of array) {
+                if (value > max) {
+                    max = value;
+                }
+            }
+            return max;
+        }
+
+        // Tworzenie modelu sieci neuronowej
+        function createModel() {
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ units: 64, activation: 'relu', inputShape: [100] })); // Warstwa ukryta (31 dni)
+			
+			// Dodatkowe warstwy ukryte
+			model.add(tf.layers.dense({ units: 128, activation: 'relu' })); // Warstwa ukryta 1
+			model.add(tf.layers.dense({ units: 64, activation: 'relu' }));  // Warstwa ukryta 2
+			model.add(tf.layers.dense({ units: 32, activation: 'relu' }));  // Warstwa ukryta 3
+			
+            model.add(tf.layers.dense({ units: 1, activation: 'linear' })); // Warstwa wyjściowa
+            model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+            return model;
+        }
+
+        // Funkcja do trenowania modelu
+        async function trainModel(model, inputs, outputs, epochs, batchSize) {
+            const xs = tf.tensor2d(inputs);
+            const ys = tf.tensor2d(outputs, [outputs.length, 1]);
+
+            await model.fit(xs, ys, {
+                epochs: epochs,
+                batchSize: batchSize,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        const outputElement = document.getElementById('output');
+                        const progress = ((epoch + 1) / epochs * 100).toFixed(0);
+                        outputElement.innerHTML = `Epoka: ${epoch + 1} / ${epochs} (${progress}%), Strata: ${logs.loss.toFixed(16)}`;
+                        //console.log(`Epoka: ${epoch + 1} / ${epochs} (${progress}%), Strata: ${logs.loss.toFixed(16)}`);
+                    }
+                }
+            });
+
+            xs.dispose();
+            ys.dispose();
+        }
+
+        // Funkcja do testowania modelu
+        function testModel(model, history) {
+            const input = tf.tensor2d([history]);
+            const prediction = model.predict(input);
+            const result = prediction.dataSync()[0];
+            input.dispose();
+            prediction.dispose();
+            return denormalizeData([result], maxPrice)[0]; // Denormalizacja wyniku
+        }
+
+        // Rozpoczęcie treningu
+        async function startTraining() {
+            const outputElement = document.getElementById('output');
+            outputElement.innerHTML = "Generowanie danych treningowych...";
+
+            // Pobierz parametry z formularza
+            const epochs = parseInt(document.getElementById('epochs').value);
+            const batchSize = parseInt(document.getElementById('batchSize').value);
+
+            // Generowanie danych treningowych
+            const numSamples = 1;
+            const { inputs, outputs } = generateData(numSamples);
+			console.log(inputs);
+			
+			// Wygeneruj dane historyczne do wykresu
+            historyData = inputs[0]; // Używamy pierwszego zestawu danych jako przykład
+            renderChart(historyData);
+
+            // Znajdź maksymalną cenę do normalizacji
+            maxPrice = findMaxValue([...inputs.flat(), ...outputs]);
+
+            // Normalizacja danych
+            const normalizedInputs = inputs.map(prices => normalizeData(prices, maxPrice));
+            const normalizedOutputs = normalizeData(outputs, maxPrice);
+
+            // Tworzenie i trenowanie modelu
+            model = createModel();
+            outputElement.innerHTML = "Trenowanie modelu...";
+            await trainModel(model, normalizedInputs, normalizedOutputs, epochs, batchSize);
+
+            outputElement.innerHTML += "<p>Trening zakończony.</p>";
+
+
+        }
+
+        // Funkcja do renderowania wykresu
+        function renderChart(data, predictedPrice) {
+			console.log('renderChart', data);
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            if (chart) {
+                chart.destroy(); // Usuń istniejący wykres, jeśli istnieje
+            }
+			
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: data.length }, (_, i) => `Dzień ${i}`),
+                    datasets: [{
+                        label: 'Cena',
+                        data: data, 
+                        borderColor: 'blue',
+                        fill: false,
+                    }, {
+						label: 'Przewidywana cena',
+						data: [predictedPrice], // Dodaj przewidywaną cenę
+						borderColor: 'red',
+						fill: false,
+					}]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Dzień'
+                            },
+                            ticks: {
+                                callback: (value, index) => `Dzień ${index}`
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Cena'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Testowanie modelu na danych historycznych
+        function testUserInput() {
+            const outputElement = document.getElementById('output');
+
+            if (!model) {
+                outputElement.innerHTML += "<p>Najpierw wytrenuj model.</p>";
+                return;
+            }
+
+            // Normalizacja danych historycznych
+            const normalizedHistory = normalizeData(historyData, maxPrice);
+
+            // Przewidywanie ceny na następny dzień
+            const predictedPrice = testModel(model, normalizedHistory);
+            outputElement.innerHTML += `
+                <p>Przewidywana cena na następny dzień: <b>${predictedPrice.toFixed(2)}</b></p>
+            `;
+			
+			// Zaktualizuj wykres z przewidywaną ceną
+			renderChart([...historyData, predictedPrice]);
+        }
+    </script>
+</body>
+</html>

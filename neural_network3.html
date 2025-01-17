@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI przewidujące ceny - Sieć Neuronowa</title>
+    <!-- Dodaj TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <!-- Dodaj Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Dodaj prosty CSS -->
+    <style>
+        #chartContainer {
+            width: 100%;
+            max-width: 1024px;
+            margin: 10px auto;
+        }
+        button {
+            display: block;
+            margin: 10px auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI przewidujące ceny w przyszłości</h1>
+    <p>Prosta sieć neuronowa ucząca się przewidywać ceny na podstawie historycznych danych.</p>
+
+
+    <h1>Kursy kryptowalut</h1>
+    <p>Pobierz aktualny kurs wybranej kryptowaluty w stosunku do wybranej waluty.</p>
+
+    <!-- Formularz do wyboru kryptowalut i walut -->
+    <div>
+        <label for="cryptocurrency">Wybierz kryptowalutę:</label>
+        <select id="cryptocurrency">
+            <option value="pivx">PIVX</option>
+            <option value="stakecube">StakeCube Coin</option>
+            <option value="polkadot">Polkadot</option>
+            <option value="hive_dollar">Hive Dollars</option>
+            <option value="hive">HIVE</option>
+        </select>
+    </div>
+    <div>
+        <label for="currency">Wybierz walutę:</label>
+        <select id="currency">
+            <option value="btc">BTC</option>
+            <option value="usd">USD</option>
+            <option value="pln">PLN</option>
+			<option value="eur">Euro</option>
+        </select>
+    </div>
+    <button onclick="fetchCryptoPrice()">Pobierz kurs</button>
+	
+    <!-- Wyświetlanie wyniku -->
+    <p id="cryptoPriceResult"></p>
+	
+	<!-- Przycisk do pobierania danych historycznych -->
+	<button onclick="fetchHistoricalDataAndDisplay()">Pobierz dane historyczne (365 dni)</button>
+
+	<!-- Kontener na dane historyczne -->
+	<div id="historicalDataResult"></div>
+	
+	<!-- Formularz do ustawienia parametrów treningu -->
+    <div>
+        <label for="epochs">Liczba epok (im więcej tym wolniej, ale lepsze wyniki):</label>
+        <input type="number" id="epochs" value="250" min="1">
+    </div>
+    <div>
+        <label for="batchSize">Rozmiar batcha (im mniejszy tym wolniej, ale lepsze wyniki):</label>
+        <select id="batchSize">
+            <option value="64">64</option>
+            <option value="32">32</option>
+            <option value="16">16</option>
+            <option value="8">8</option>
+			<option value="4">4</option>
+			<option value="2">2</option>
+        </select>
+    </div>
+    <button onclick="startTraining()">Rozpocznij trening</button>
+
+    <!-- Kontener na wykres -->
+    <div id="chartContainer">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <!-- Przycisk do testowania modelu -->
+    <button onclick="testUserInput()">Przetestuj model</button>
+
+    <!-- Wyświetlanie wyników -->
+    <p id="output"></p>
+
+    <script>
+        let model;
+        let maxPrice = 0; // Maksymalna cena do normalizacji
+        let chart; // Wykres
+        let historyData = []; // Dane historyczne
+		
+		async function fetchHistoricalDataForTraining(cryptocurrency, currency, days = 365) {
+			const prices = await fetchHistoricalData(cryptocurrency, currency, days);
+			if (!prices) return null;
+
+			const inputs = [];
+			const outputs = [];
+
+			// Przetwórz dane historyczne na format odpowiedni dla modelu
+			for (let i = 0; i < prices.length - 1; i++) {
+				inputs.push(prices[i][1]); // Cena w dniu i
+				outputs.push(prices[i + 1][1]); // Cena w dniu i+1
+			}
+
+			return { inputs, outputs };
+		}
+		
+        // Funkcja do pobierania kursu kryptowaluty
+        async function fetchCryptoPrice() {
+            const cryptocurrency = document.getElementById('cryptocurrency').value;
+            const currency = document.getElementById('currency').value;
+            const resultElement = document.getElementById('cryptoPriceResult');
+
+            // Sprawdź, czy wybrana kryptowaluta i waluta są poprawne
+            if (!cryptocurrency || !currency) {
+                resultElement.innerHTML = "<p>Proszę wybrać kryptowalutę i walutę.</p>";
+                return;
+            }
+
+            // Endpoint API CoinGecko
+            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptocurrency}&vs_currencies=${currency}`;
+
+            try {
+                // Wykonaj zapytanie do API
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Sprawdź, czy dane są dostępne
+                if (data[cryptocurrency] && data[cryptocurrency][currency]) {
+                    const price = data[cryptocurrency][currency];
+                    resultElement.innerHTML = `<p>Aktualny kurs ${cryptocurrency.toUpperCase()} w ${currency.toUpperCase()}: <b>${price}</b></p>`;
+                } else {
+                    resultElement.innerHTML = "<p>Nie udało się pobrać kursu.</p>";
+                }
+            } catch (error) {
+                console.error("Błąd podczas pobierania danych:", error);
+                resultElement.innerHTML = "<p>Wystąpił błąd podczas pobierania kursu.</p>";
+            }
+        }
+
+        // Funkcja do pobierania historycznych kursów kryptowaluty
+        async function fetchHistoricalData(cryptocurrency, currency, days = 365) {
+            const url = `https://api.coingecko.com/api/v3/coins/${cryptocurrency}/market_chart?vs_currency=${currency}&days=${days}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                return data.prices; // Zwraca tablicę z danymi [timestamp, cena]
+            } catch (error) {
+                console.error("Błąd podczas pobierania danych historycznych:", error);
+                return null;
+            }
+        }
+
+        // Funkcja do przetwarzania danych historycznych
+        function processHistoricalData(prices) {
+            return prices.map(([timestamp, price]) => {
+                const date = new Date(timestamp).toLocaleDateString(); // Konwertuj timestamp na datę
+                return { date, price };
+            });
+        }
+
+        // Funkcja do wyświetlania danych historycznych
+        function displayHistoricalData(data) {
+            const resultElement = document.getElementById('historicalDataResult');
+            if (!data || data.length === 0) {
+                resultElement.innerHTML = "<p>Brak danych historycznych.</p>";
+                return;
+            }
+
+            // Tworzenie tabeli
+            let table = `<table border="1">
+                <tr>
+                    <th>Data</th>
+                    <th>Cena (${document.getElementById('currency').value.toUpperCase()})</th>
+                </tr>`;
+
+            data.forEach(({ date, price }) => {
+                table += `<tr>
+                    <td>${date}</td>
+                    <td>${price.toFixed(8)}</td>
+                </tr>`;
+            });
+
+            table += `</table>`;
+            resultElement.innerHTML = table;
+        }
+
+        // Funkcja do pobierania i wyświetlania danych historycznych
+        async function fetchHistoricalDataAndDisplay() {
+            const cryptocurrency = document.getElementById('cryptocurrency').value;
+            const currency = document.getElementById('currency').value;
+            const resultElement = document.getElementById('historicalDataResult');
+
+            if (!cryptocurrency || !currency) {
+                resultElement.innerHTML = "<p>Proszę wybrać kryptowalutę i walutę.</p>";
+                return;
+            }
+
+            resultElement.innerHTML = "<p>Pobieranie danych historycznych...</p>";
+
+            const prices = await fetchHistoricalData(cryptocurrency, currency, 365);
+            if (prices) {
+                const processedData = processHistoricalData(prices);
+                displayHistoricalData(processedData);
+            } else {
+                resultElement.innerHTML = "<p>Nie udało się pobrać danych historycznych.</p>";
+            }
+        }		
+
+        // Funkcja do normalizacji danych (skalowanie do zakresu [0, 1])
+        function normalizeData(data, max) {
+            return data.map(x => x / max);
+        }
+
+        // Funkcja do denormalizacji danych (przywracanie oryginalnej skali)
+        function denormalizeData(data, max) {
+            return data.map(x => x * max);
+        }
+
+        // Funkcja do znajdowania maksymalnej wartości w tablicy
+        function findMaxValue(array) {
+            let max = -Infinity;
+            for (let value of array) {
+                if (value > max) {
+                    max = value;
+                }
+            }
+            return max;
+        }
+
+        // Tworzenie modelu sieci neuronowej
+        function createModel() {
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ units: 64, activation: 'relu', inputShape: [365] })); // Warstwa ukryta (365 dni)
+			
+			// Dodatkowe warstwy ukryte
+			model.add(tf.layers.dense({ units: 128, activation: 'relu' })); // Warstwa ukryta 1
+			model.add(tf.layers.dense({ units: 64, activation: 'relu' }));  // Warstwa ukryta 2
+			model.add(tf.layers.dense({ units: 32, activation: 'relu' }));  // Warstwa ukryta 3
+			
+            model.add(tf.layers.dense({ units: 1, activation: 'linear' })); // Warstwa wyjściowa
+            model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+            return model;
+        }
+
+        // Funkcja do trenowania modelu
+        async function trainModel(model, xs, ys, epochs, batchSize) {
+            await model.fit(xs, ys, {
+                epochs: epochs,
+                batchSize: batchSize,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        const outputElement = document.getElementById('output');
+                        const progress = ((epoch + 1) / epochs * 100).toFixed(0);
+                        outputElement.innerHTML = `Epoka: ${epoch + 1} / ${epochs} (${progress}%), Strata: ${logs.loss.toFixed(16)}`;
+                    }
+                }
+            });
+        }
+
+        // Funkcja do testowania modelu
+        function testModel(model, history) {
+            const input = tf.tensor2d([history]);
+            const prediction = model.predict(input);
+            const result = prediction.dataSync()[0];
+            input.dispose();
+            prediction.dispose();
+            return denormalizeData([result], maxPrice)[0]; // Denormalizacja wyniku
+        }
+
+        async function startTraining() {
+            const outputElement = document.getElementById('output');
+            outputElement.innerHTML = "Pobieranie danych historycznych...";
+
+            const cryptocurrency = document.getElementById('cryptocurrency').value;
+            const currency = document.getElementById('currency').value;
+
+            const { inputs, outputs } = await fetchHistoricalDataForTraining(cryptocurrency, currency, 365);
+            if (!inputs || !outputs) {
+                outputElement.innerHTML = "<p>Nie udało się pobrać danych historycznych.</p>";
+                return;
+            }
+
+            historyData = inputs;
+            renderChart(historyData);
+
+            maxPrice = findMaxValue([...inputs, ...outputs]);
+            if (maxPrice <= 0) {
+                outputElement.innerHTML = "<p>Błąd: Maksymalna cena musi być większa od 0.</p>";
+                return;
+            }
+
+            const normalizedInputs = inputs.reverse().map(price => price / maxPrice);
+            const normalizedOutputs = outputs.map(price => price / maxPrice);
+
+            // Przekształć dane do odpowiedniego formatu
+            const xs = tf.tensor2d([normalizedInputs]);
+            const ys = tf.tensor2d([normalizedOutputs[0]], [1, 1]); // Kształt: [1, 1]
+
+            console.log("xs:", xs); // Debugowanie
+            console.log("ys:", ys); // Debugowanie
+
+            model = createModel();
+            outputElement.innerHTML = "Trenowanie modelu...";
+
+            // Pobierz parametry z formularza
+            const epochs = parseInt(document.getElementById('epochs').value);
+            const batchSize = parseInt(document.getElementById('batchSize').value); // Przekształć na liczbę
+            await trainModel(model, xs, ys, epochs, batchSize);
+
+            outputElement.innerHTML += "<p>Trening zakończony.</p>";
+
+            xs.dispose();
+            ys.dispose();
+        }
+
+        // Funkcja do renderowania wykresu
+        function renderChart(data, predictedPrice) {
+			console.log('renderChart', data);
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            if (chart) {
+                chart.destroy(); // Usuń istniejący wykres, jeśli istnieje
+            }
+			
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: data.length }, (_, i) => `Dzień ${i}`),
+                    datasets: [{
+                        label: 'Cena',
+                        data: data, 
+                        borderColor: 'blue',
+                        fill: false,
+                    }, {
+						label: 'Przewidywana cena',
+						data: [predictedPrice], // Dodaj przewidywaną cenę
+						borderColor: 'red',
+						fill: false,
+					}]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Dzień'
+                            },
+                            ticks: {
+                                callback: (value, index) => `Dzień ${index}`
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Cena'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Testowanie modelu na danych historycznych
+        function testUserInput() {
+            const outputElement = document.getElementById('output');
+
+            if (!model) {
+                outputElement.innerHTML += "<p>Najpierw wytrenuj model.</p>";
+                return;
+            }
+
+            // Normalizacja danych historycznych
+            const normalizedHistory = normalizeData(historyData, maxPrice);
+
+            // Przewidywanie ceny na następny dzień
+            const predictedPrice = testModel(model, normalizedHistory);
+            outputElement.innerHTML += `
+                <p>Przewidywana cena na następny dzień: <b>${predictedPrice.toFixed(8)}</b></p>
+            `;
+			
+			// Zaktualizuj wykres z przewidywaną ceną
+			renderChart([...historyData, predictedPrice]);
+        }
+    </script>
+</body>
+</html>

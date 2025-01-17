@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI uczące się dodawania - Sieć Neuronowa</title>
+    <!-- Dodaj TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+</head>
+<body>
+    <h1>AI uczące się dodawania liczb od 1 do 1000</h1>
+    <p>Prosta sieć neuronowa ucząca się dodawania.</p>
+    <p id="output"></p>
+
+    <script>
+        // Funkcja do generowania danych treningowych
+        function generateData(numSamples) {
+            const inputs = [];
+            const outputs = [];
+            for (let i = 0; i < numSamples; i++) {
+                const num1 = Math.floor(Math.random() * 1000) + 1;
+                const num2 = Math.floor(Math.random() * 1000) + 1;
+                inputs.push([num1, num2]);
+                outputs.push(num1 + num2);
+            }
+            return { inputs, outputs };
+        }
+
+        // Funkcja do normalizacji danych (skalowanie do zakresu [0, 1])
+        function normalizeData(data, max) {
+			console.log('normalizeData', data, max, data.map(x => x / max));
+            return data.map(x => x / max);
+        }
+
+        // Funkcja do denormalizacji danych (przywracanie oryginalnej skali)
+        function denormalizeData(data, max) {
+		console.log('denormalizeData', data, max, data.map(x => x * max));
+            return data.map(x => x * max);
+        }
+
+        // Tworzenie modelu sieci neuronowej
+        function createModel() {
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ units: 10, activation: 'relu', inputShape: [2] })); // Warstwa ukryta
+            model.add(tf.layers.dense({ units: 1, activation: 'linear' })); // Warstwa wyjściowa
+            model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+            return model;
+        }
+
+        // Funkcja do trenowania modelu
+        async function trainModel(model, inputs, outputs) {
+			console.log('trainModel:', inputs, outputs);
+            const xs = tf.tensor2d(inputs);
+            const ys = tf.tensor2d(outputs, [outputs.length, 1]);
+
+            await model.fit(xs, ys, {
+                epochs: 20,
+                batchSize: 16,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        const outputElement = document.getElementById('output');
+                        outputElement.innerHTML = `Epoka: ${epoch + 1}, Strata: ${logs.loss.toFixed(12)}`;
+                        console.log(`Epoka: ${epoch + 1}, Strata: ${logs.loss.toFixed(12)}`);
+                    }
+                }
+            });
+
+            xs.dispose();
+            ys.dispose();
+        }
+
+        // Funkcja do testowania modelu
+        function testModel(model, num1, num2) {
+            const input = tf.tensor2d([[num1, num2]]);
+            const prediction = model.predict(input);
+            const result = prediction.dataSync()[0];
+            input.dispose();
+            prediction.dispose();
+            return result;
+        }
+
+        // Główna funkcja
+        async function run() {
+            const outputElement = document.getElementById('output');
+            outputElement.innerHTML = "Generowanie danych treningowych...";
+
+            // Generowanie danych treningowych
+            const numSamples = 10000;
+            const { inputs, outputs } = generateData(numSamples);
+            const maxInput = 1000;
+            const maxOutput = 2000;
+
+            // Normalizacja danych
+            const normalizedInputs = inputs.map(pair => [
+                normalizeData([pair[0]], maxInput)[0],
+                normalizeData([pair[1]], maxInput)[0]
+            ]);
+            const normalizedOutputs = normalizeData(outputs, maxOutput);
+
+            // Tworzenie i trenowanie modelu
+            const model = createModel();
+            outputElement.innerHTML = "Trenowanie modelu...";
+            await trainModel(model, normalizedInputs, normalizedOutputs);
+
+            // Testowanie modelu
+            outputElement.innerHTML += "<p>Testowanie modelu:</p>";
+            const testNumbers = [
+                [100, 200],
+                [345, 678],
+                [999, 1],
+                [500, 500],
+                [1, 1],
+                [1, 2],
+                [3, 4],
+				[250, 250],
+                [1, 1],
+                [1, 2],
+				[2, 3],
+				[1000, 2000],
+				[1500, 2500],
+				[2500, 2500],
+				[5000, 5000],
+				[1, -1],
+				[1, -2],
+				[10, -2],
+				[25, -2],
+            ];
+            testNumbers.forEach(([num1, num2]) => {
+                const predicted = testModel(model, num1 / maxInput, num2 / maxInput);
+                const denormalizedPredicted = denormalizeData([predicted], maxOutput)[0];
+                outputElement.innerHTML += `
+                    <p>${num1} + ${num2} = ${Math.round(denormalizedPredicted)} (Prawidłowo: ${num1 + num2}, błąd: <b>${Math.round(denormalizedPredicted - (num1 + num2))})</b></p>
+                `;
+            });
+        }
+
+        // Uruchom program
+        run();
+    </script>
+</body>
+</html>
