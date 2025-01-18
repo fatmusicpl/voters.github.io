@@ -75,7 +75,7 @@
                     // Cena rośnie o 1% dziennie + losowe odchylenie
                     currentPrice /= 1 + (0.01 + (Math.random() - 0.5) * 0.1); // Używamy dzielenia, aby cofnąć się w czasie
                 }
-		    for (; 70 < day < 101; day++) { // Generuj ceny od dnia 0 do 30
+		    for (; 70 < day && day < 101; day++) { // Generuj ceny od dnia 0 do 30
                     prices.push(currentPrice);
 					console.log('Cena w dniu: ', day, currentPrice);
                     // Cena rośnie o 1% dziennie + losowe odchylenie
