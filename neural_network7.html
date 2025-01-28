@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI przewidujące ceny - Sieć Neuronowa</title>
+    <!-- Dodaj TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <script src="json_data/data.js" ></script>
+</head>
+<body>
+<h1>AI przewidujące ceny w przyszłości</h1>
+<p>Prosta sieć neuronowa ucząca się przewidywać ceny na podstawie historycznych danych.</p>
+<div>
+    <label for="epochs">Liczba epok (im więcej tym wolniej, ale lepsze wyniki):</label>
+    <input type="number" id="epochs" value="1000" min="1">
+</div>
+<div>
+    <label for="batch">Rozmiar batcha (im mniejszy tym wolniej, ale lepsze wyniki):</label>
+    <select id="batch">
+        <option value="2">2</option>
+        <option value="64">64</option>
+        <option value="32">32</option>
+        <option value="16">16</option>
+        <option value="8">8</option>
+        <option value="4">4</option>
+        <option value="2">2</option>
+    </select>
+</div>
+
+<!-- Wyświetlanie wyników -->
+<p id="output"></p>
+<script>
+    console.log(data);
+    let model;
+    const DAYS = 365;
+    let daysToLearn = 14;
+    let daysToPredict = 1;
+
+    let inputs = [];
+    let outputs = [];
+
+    const formatter = new Intl.NumberFormat('pl-PL', {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 32,
+    });
+
+    let formData = {};
+
+    cryptocurrency = [
+        'bitcoin',
+        'pivx',
+        'polkadot',
+        'stakecube',
+        'hive_dollar',
+        'hive',
+        'blackcoin',
+    ];
+
+    currency = [
+        'usd',
+        'pln',
+        'euro',
+    ];
+
+    const coin = 'bitcoin';
+
+    start();
+    async function start() {
+        await fetchDataForTraining();
+        await createModel();
+        await trainModel();
+        await testModel();
+    }
+
+
+    async function testModel() {
+        predictInput = [];
+        let keys = Object.keys(data);
+
+        for(let i = keys.length - daysToLearn; i < keys.length; i++) {
+            predictInput.push(data[keys[i]][coin]['price_normalized']);
+        }
+        console.log(predictInput);
+
+        const predictions = model.predict(tf.tensor2d(predictInput, [1, predictInput.length]));
+
+        // Konwersja wyników do tablicy
+        const predictedValues = predictions.dataSync();
+
+        let { maxPrice, maxVolume, maxMarketCap, maxTime } = findMaxValues(data, coin);
+        let { minPrice, minVolume, minMarketCap, minTime } = findMinValues(data, coin);
+
+        console.log(maxPrice, minPrice);
+
+        console.log(predictedValues[0]);
+        console.log((predictedValues[0] * (maxPrice - minPrice)) + minPrice);
+    }
+    async function trainModel() {
+        getFormData();
+        // Konwersja danych na tensory
+        const inputTensor = tf.tensor2d(inputs, [inputs.length, inputs[0].length]); // Kształt: [liczba próbek, inputDays, 3]
+        const outputTensor = tf.tensor2d(outputs, [outputs.length, 1]); // Kształt: [liczba próbek, 1]
+
+        // Trenowanie modelu
+        await model.fit(inputTensor, outputTensor, {
+            epochs: formData.epochs, // Liczba epok
+            batchSize: 8, // Rozmiar batcha
+            validationSplit: 0.2, // 20% danych do walidacji
+            callbacks: {
+                onEpochEnd: (epoch, logs) => {
+                    const outputElement = document.getElementById('output');
+                    const progress = ((epoch + 1) / formData.epochs * 100).toFixed(0);
+                    outputElement.innerHTML = `Epoka: ${epoch + 1} / ${formData.epochs} (${progress}%), Strata: ${logs.loss.toFixed(16)}`;
+                    console.log(`Epoka: ${epoch + 1} / ${formData.epochs} (${progress}%), Strata: ${logs.loss.toFixed(16)}`);
+                }
+            }
+        });
+    }
+    function createModel() {
+        model = tf.sequential();
+
+        model.add(tf.layers.dense({ units: 128, activation: 'relu', inputShape: [inputs[0].length] })); // Warstwa ukryta
+
+        model.add(tf.layers.dense({ units: 64, activation: 'relu' }));  // Warstwa ukryta 2
+        model.add(tf.layers.dense({ units: 32, activation: 'relu' }));  // Warstwa ukryta 3
+        model.add(tf.layers.dense({ units: 16, activation: 'relu' }));  // Warstwa ukryta 3
+
+        model.add(tf.layers.dense({ units: 1, activation: 'linear' })); // Warstwa wyjściowa
+
+        model.compile({ optimizer: 'adam', loss: 'meanSquaredError' });
+    }
+    async function fetchDataForTraining() {
+        let keys = Object.keys(data);
+        let maxDataLength = keys.length - daysToLearn - daysToPredict;
+
+        for (let i = 0; i < maxDataLength; i++) {
+            let dayToLearn = [];
+            for (let j = 0; j < daysToLearn; j++) {
+                dayToLearn.push(data[keys[i + j]][coin]['price_normalized']);
+            }
+            inputs.push(dayToLearn);
+            outputs.push(data[keys[i + daysToLearn + daysToPredict - 1]][coin]['price_normalized']);
+        }
+        console.log(inputs);
+        console.log(outputs);
+    }
+
+    function findMaxValues(data, coin) {
+        const dataArray = Object.values(data);
+        console.log(dataArray, coin);
+        const maxPrice = Math.max(...dataArray.map(item => item[coin]['price']));
+        const maxVolume = Math.max(...dataArray.map(item => item[coin]['total_volume']));
+        const maxMarketCap = Math.max(...dataArray.map(item => item[coin]['market_cap']));
+        const maxTime = Math.max(...dataArray.map(item => item['time']));
+
+        return { maxPrice, maxVolume, maxMarketCap, maxTime };
+    }
+    function findMinValues(data, coin) {
+        const dataArray = Object.values(data);
+        const minPrice = Math.min(...dataArray.map(item => item[coin]['price']));
+        const minVolume = Math.min(...dataArray.map(item => item[coin]['total_volume']));
+        const minMarketCap = Math.min(...dataArray.map(item => item[coin]['market_cap']));
+        const minTime = Math.min(...dataArray.map(item => item['time']));
+
+        return { minPrice, minVolume, minMarketCap, minTime };
+    }
+    function getFormData() {
+        formData = {
+            //coin: document.getElementById('coin').value,
+            //currency: document.getElementById('currency').value,
+            epochs: parseInt(document.getElementById('epochs').value),
+            batch: parseInt(document.getElementById('batch').value),
+        }
+    }
+</script>
+</body>
+</html>
