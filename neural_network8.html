@@ -10,7 +10,7 @@
     <!-- x-spreadsheet stylesheet -->
     <link rel="stylesheet" href="https://unpkg.com/x-data-spreadsheet/dist/xspreadsheet.css"/>
     <!-- x-spreadsheet library -->
-    <script src="https://unpkg.com/x-data-spreadsheet/dist/xspreadsheet.js"></script>
+    <script src="js/xspreadsheet.js"></script>
 </head>
 <body>
 <h1>AI przewidujące ceny w przyszłości</h1>
@@ -105,15 +105,16 @@
         getFormData();
         console.log(daysToLearn);
         await fetchDataForTraining();
+        drawGrid();
         await createModel();
         await trainModel();
-        drawGrid();
         await testModel();
     }
 
 
     function drawGrid() {
         grid.cellText(0, 0, 'Data').cellText(0, 1, 'Kurs ' + coin + '/USD');
+        grid.cellText(0, 2, 'market_cap').cellText(0, 3, 'total_volume');
 
         let keys = Object.keys(data);
         for (let i = 0; i < keys.length - 100 + 2; i++) {
@@ -122,6 +123,8 @@
 
         for (let i = 0; i < keys.length; i++) {
             grid.cellText(1 + i, 1, data[keys[i]][coin]['price']).cellText(1 + i, 0, data[keys[i]]['time_locale']);
+            grid.cellText(1 + i, 2, data[keys[i]][coin]['market_cap']);
+            grid.cellText(1 + i, 3, data[keys[i]][coin]['total_volume']);
         }
         grid.reRender();
     }
@@ -150,7 +153,7 @@
         console.log((predictedValues[0] * (maxPrice - minPrice)) + minPrice);
         grid.cellText(keys.length + 1, 1, (predictedValues[0] * (maxPrice - minPrice)) + minPrice);
 
-        let predicLastDays = 30;
+        let predicLastDays = 100;
 
         for (let j = 0; j < predicLastDays; j++) {
             predictInput = [];
@@ -167,7 +170,7 @@
 
             predictions = model.predict(tf.tensor3d([predictInput], [1, 30, 4]));
             let predictedValues = predictions.dataSync();
-            grid.cellText(keys.length - predicLastDays + j + 1, 2, (predictedValues[0] * (maxPrice - minPrice)) + minPrice);
+            grid.cellText(keys.length - predicLastDays + j + 1, 4, (predictedValues[0] * (maxPrice - minPrice)) + minPrice);
             console.log((predictedValues[0] * (maxPrice - minPrice)) + minPrice);
         }
     }
