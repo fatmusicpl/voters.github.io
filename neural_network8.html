@@ -7,6 +7,10 @@
     <!-- Dodaj TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
     <script src="json_data/data.js" ></script>
+    <!-- x-spreadsheet stylesheet -->
+    <link rel="stylesheet" href="https://unpkg.com/x-data-spreadsheet/dist/xspreadsheet.css"/>
+    <!-- x-spreadsheet library -->
+    <script src="js/xspreadsheet.js"></script>
 </head>
 <body>
 <h1>AI przewidujące ceny w przyszłości</h1>
@@ -57,7 +61,11 @@
 <!-- Przycisk do pobierania danych historycznych -->
 <button onclick="start()">START</button>
 
+<div id="gridctr"></div>
+
 <script>
+
+
     let model;
     const DAYS = 365;
     let daysToLearn = 28;
@@ -91,16 +99,32 @@
 
     let coin = 'bitcoin';
 
+    const grid = x_spreadsheet(document.getElementById("gridctr"), {len: 500});
+
     async function start() {
         getFormData();
         console.log(daysToLearn);
         await fetchDataForTraining();
         await createModel();
         await trainModel();
+        drawGrid();
         await testModel();
     }
 
 
+    function drawGrid() {
+        grid.cellText(0, 0, 'Data').cellText(0, 1, 'Kurs ' + coin + '/USD');
+
+        let keys = Object.keys(data);
+        for (let i = 0; i < keys.length - 100 + 2; i++) {
+            grid.data.rows.insert(1);
+        }
+
+        for (let i = 0; i < keys.length; i++) {
+            grid.cellText(1 + i, 1, data[keys[i]][coin]['price']).cellText(1 + i, 0, data[keys[i]]['time_locale']);
+        }
+        grid.reRender();
+    }
     async function testModel() {
         let { maxPrice, maxVolume, maxMarketCap, maxTime } = findMaxValues(data, coin);
         let { minPrice, minVolume, minMarketCap, minTime } = findMinValues(data, coin);
@@ -124,12 +148,13 @@
         // Konwersja wyników do tablicy
         let predictedValues = predictions.dataSync();
         console.log((predictedValues[0] * (maxPrice - minPrice)) + minPrice);
+        grid.cellText(keys.length + 1, 1, (predictedValues[0] * (maxPrice - minPrice)) + minPrice);
 
-        let predicLastDays = 7;
+        let predicLastDays = 30;
 
         for (let j = 0; j < predicLastDays; j++) {
             predictInput = [];
-            for(let i = keys.length - daysToLearn - predicLastDays - 1; i < keys.length - predicLastDays - 1; i++) {
+            for(let i = keys.length - daysToLearn - predicLastDays; i < keys.length - predicLastDays; i++) {
                 console.log(data[keys[i + j]]['time_locale'], data[keys[i + j]][coin]['price']);
                 predictInput.push([
                     getNormalized(data[keys[i + j]][coin]['price'], minPrice, maxPrice),
@@ -138,10 +163,11 @@
                     getNormalized(data[keys[i + j]][coin]['total_volume'], minVolume, maxVolume),
                 ]);
             }
-            console.log("==================================\n" + data[keys[keys.length - predicLastDays + j - 1]]['time_locale'] + ' ' + data[keys[keys.length - predicLastDays + j - 1]][coin]['price'] + "\n==================================");
+            console.log("==================================\n" + data[keys[keys.length - predicLastDays + j]]['time_locale'] + ' ' + data[keys[keys.length - predicLastDays + j]][coin]['price'] + "\n==================================");
 
             predictions = model.predict(tf.tensor3d([predictInput], [1, 30, 4]));
             let predictedValues = predictions.dataSync();
+            grid.cellText(keys.length - predicLastDays + j + 1, 2, (predictedValues[0] * (maxPrice - minPrice)) + minPrice);
             console.log((predictedValues[0] * (maxPrice - minPrice)) + minPrice);
         }
     }
