@@ -31,7 +31,7 @@
     </select>
 </div>
 <div>
-    <label for="cryptocurrency">Krypto:</label>
+    <label for="cryptocurrency">Cryptocurrency:</label>
     <select id="cryptocurrency">
         <option value="bitcoin">bitcoin</option>
         <option value="pivx">pivx</option>
@@ -187,7 +187,7 @@
                 onEpochEnd: (epoch, logs) => {
                     const outputElement = document.getElementById('output');
                     const progress = ((epoch + 1) / formData.epochs * 100).toFixed(0);
-                    outputElement.innerHTML = `Epoka: ${epoch + 1} / ${formData.epochs} (${progress}%), Strata: ${logs.loss.toFixed(16)}`;
+                    outputElement.innerHTML = `Epoch: ${epoch + 1} / ${formData.epochs} (${progress}%), Loss: ${logs.loss.toFixed(16)}`;
                     console.log(`Epoka: ${epoch + 1} / ${formData.epochs} (${progress}%), Strata: ${logs.loss.toFixed(16)}`);
                 }
             }
