@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI przewidujące ceny - Sieć Neuronowa</title>
+    <!-- Dodaj TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <script src="json_data/data.js" ></script>
+</head>
+<body>
+<h1>AI przewidujące ceny w przyszłości</h1>
+<p>Prosta sieć neuronowa ucząca się przewidywać ceny na podstawie historycznych danych.</p>
+<div>
+    <label for="epochs">Liczba epok (im więcej tym wolniej, ale lepsze wyniki):</label>
+    <input type="number" id="epochs" value="250" min="1">
+</div>
+<div>
+    <label for="batch">Rozmiar batcha (im mniejszy tym wolniej, ale lepsze wyniki):</label>
+    <select id="batch">
+        <option value="64">64</option>
+        <option value="32">32</option>
+        <option value="16">16</option>
+        <option value="8">8</option>
+        <option value="4">4</option>
+        <option value="2">2</option>
+    </select>
+</div>
+<!-- Wyświetlanie wyników -->
+<p id="output"></p>
+<script>
+    console.log(data);
+    let model;
+    const DAYS = 365;
+    let daysToLearn = 14;
+    let daysToPredict = 2;
+
+    const formatter = new Intl.NumberFormat('pl-PL', {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 32,
+    });
+
+    let oldData = [
+        '20250126',
+    ];
+
+    cryptocurrency = [
+        'bitcoin',
+        'pivx',
+        'polkadot',
+        'stakecube',
+        'hive_dollar',
+        'hive',
+        'blackcoin',
+    ];
+
+    currency = [
+        'usd',
+        'pln',
+        'euro',
+    ];
+
+    getHistoryPrices();
+    async function getHistoryPrices() {
+        let jsonData = {};
+
+        for (let i = 0; i < cryptocurrency.length; i++) {
+            console.log(cryptocurrency[i]);
+            jsonData = await normalize(jsonData, cryptocurrency[i]);
+        }
+        console.log(jsonData);
+        jsonS = JSON.stringify(jsonData, null, 2);
+        console.log(jsonS);
+
+
+    }
+
+    async function normalize(jsonData, coin) {
+        dataCoingecko = await loadFromCoingecko(coin);
+        for (let i = 0; i < dataCoingecko.prices.length - 1; i++) {
+            if (!jsonData[dataCoingecko.prices[i][0]]) {
+                jsonData[dataCoingecko.prices[i][0]] = {};
+            }
+            if (!jsonData[dataCoingecko.prices[i][0]][coin]) {
+                jsonData[dataCoingecko.prices[i][0]][coin] = {};
+            }
+            jsonData[dataCoingecko.prices[i][0]]['time'] = dataCoingecko.prices[i][0];
+            jsonData[dataCoingecko.prices[i][0]]['time_locale'] = (new Date(dataCoingecko.prices[i][0])).toLocaleString();
+            jsonData[dataCoingecko.prices[i][0]][coin]['price'] = dataCoingecko.prices[i][1];
+            jsonData[dataCoingecko.prices[i][0]][coin]['market_cap'] = dataCoingecko.market_caps[i][1];
+            jsonData[dataCoingecko.prices[i][0]][coin]['total_volume'] = dataCoingecko.total_volumes[i][1];
+        }
+
+        let { maxPrice, maxVolume, maxMarketCap, maxTime } = findMaxValues(jsonData, coin);
+        let { minPrice, minVolume, minMarketCap, minTime } = findMinValues(jsonData, coin);
+        let minMaxPrice = maxPrice - minPrice;
+        let minMaxVolume = maxVolume - minVolume;
+        let minMaxMarketCap = maxMarketCap - minMarketCap;
+        let minMaxTime = maxTime - minTime;
+
+        for (let i = 0; i < dataCoingecko.prices.length - 1; i++) {
+            jsonData[dataCoingecko.prices[i][0]][coin]['price_normalized'] = (jsonData[dataCoingecko.prices[i][0]][coin]['price'] - minPrice) / minMaxPrice;
+            jsonData[dataCoingecko.prices[i][0]][coin]['market_cap_normalized'] = (jsonData[dataCoingecko.prices[i][0]][coin]['market_cap'] - minMarketCap) / minMaxMarketCap;
+            jsonData[dataCoingecko.prices[i][0]][coin]['total_volume_normalized'] = (jsonData[dataCoingecko.prices[i][0]][coin]['total_volume'] - minVolume) / minMaxVolume;
+            jsonData[dataCoingecko.prices[i][0]]['time_normalized'] = (jsonData[dataCoingecko.prices[i][0]]['time'] - minTime) / minMaxTime;
+        }
+//        jsonData[coin] = {
+//            'min_price': minPrice,
+//            'max_price': maxPrice,
+//            'min_total_volume': minVolume,
+//            'max_total_volume': maxVolume,
+//            'min_market_cap': minMarketCap,
+//            'max_market_cap': maxMarketCap,
+//        }
+        return jsonData;
+    }
+    async function loadFromCoingecko(crypto) {
+        try {
+            const url = `https://api.coingecko.com/api/v3/coins/${crypto}/market_chart?vs_currency=usd&days=${DAYS}`;
+            await delay(20);
+            const response = await fetch(url);
+            return await response.json();
+        } catch (error) {
+            console.error("Błąd podczas pobierania danych historycznych:", error);
+            return null;
+        }
+    }
+
+    function delay(s) {
+        return new Promise(resolve => setTimeout(resolve, s * 1000));
+    }
+
+    function findMaxValues(data, coin) {
+        const dataArray = Object.values(data);
+        console.log(dataArray, coin);
+        const maxPrice = Math.max(...dataArray.map(item => item[coin]['price']));
+        const maxVolume = Math.max(...dataArray.map(item => item[coin]['total_volume']));
+        const maxMarketCap = Math.max(...dataArray.map(item => item[coin]['market_cap']));
+        const maxTime = Math.max(...dataArray.map(item => item['time']));
+
+        return { maxPrice, maxVolume, maxMarketCap, maxTime };
+    }
+    function findMinValues(data, coin) {
+        const dataArray = Object.values(data);
+        const minPrice = Math.min(...dataArray.map(item => item[coin]['price']));
+        const minVolume = Math.min(...dataArray.map(item => item[coin]['total_volume']));
+        const minMarketCap = Math.min(...dataArray.map(item => item[coin]['market_cap']));
+        const minTime = Math.min(...dataArray.map(item => item['time']));
+
+        return { minPrice, minVolume, minMarketCap, minTime };
+    }
+
+</script>
+</body>
+</html>
