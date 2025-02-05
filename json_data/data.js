@@ -22629,6 +22629,128 @@ const data = {
       "market_cap_normalized": 0.8801281433487494,
       "total_volume_normalized": 0.001471761641442527
     }
+  },
+  "1738627200000": {
+    "bitcoin": {
+      "price": 101466.8606657039,
+      "market_cap": 2011121374511.8835,
+      "total_volume": 122163969235.23686,
+      "price_normalized": 0.9252648022382476,
+      "market_cap_normalized": 0.9286919240868443,
+      "total_volume_normalized": 0.6290656069077029
+    },
+    "time": 1738627200000,
+    "time_locale": "4.02.2025, 01:00:00",
+    "time_normalized": 0.9972527472527473,
+    "pivx": {
+      "price": 0.19657040950611548,
+      "market_cap": 17758252.604979165,
+      "total_volume": 3010021.116088403,
+      "price_normalized": 0.08387268977300587,
+      "market_cap_normalized": 0.11504788067864312,
+      "total_volume_normalized": 0.04709162221712355
+    },
+    "polkadot": {
+      "price": 5.177344192231989,
+      "market_cap": 7885714795.996913,
+      "total_volume": 1201970826.6236064,
+      "price_normalized": 0.1854181911115319,
+      "market_cap_normalized": 0.2287339675605323,
+      "total_volume_normalized": 0.2858838915553524
+    },
+    "stakecube": {
+      "price": 0.01233161039513649,
+      "market_cap": 189968.28440490534,
+      "total_volume": 1626.8185620989575,
+      "price_normalized": 0.09563025129399444,
+      "market_cap_normalized": 0.11854794872231275,
+      "total_volume_normalized": 0.1812152906903277
+    },
+    "hive_dollar": {
+      "price": 0.9842122307961065,
+      "market_cap": 33905171.192624405,
+      "total_volume": 105362.15922588261,
+      "price_normalized": 0.5303460361456082,
+      "market_cap_normalized": 0.9371123786936436,
+      "total_volume_normalized": 0.016970902838027633
+    },
+    "hive": {
+      "price": 0.34349657487911045,
+      "market_cap": 159872781.0027048,
+      "total_volume": 35688716.89224973,
+      "price_normalized": 0.37143255494369715,
+      "market_cap_normalized": 0.38242915556205026,
+      "total_volume_normalized": 0.016913961177426
+    },
+    "blackcoin": {
+      "price": 0.05388724977268785,
+      "market_cap": 3410613.6698138346,
+      "total_volume": 0.027841541350772697,
+      "price_normalized": 0.774488780917559,
+      "market_cap_normalized": 0.7762943978431186,
+      "total_volume_normalized": 0
+    }
+  },
+  "1738713600000": {
+    "bitcoin": {
+      "price": 98118.43921664466,
+      "market_cap": 1943535291172.1597,
+      "total_volume": 73196693057.98114,
+      "price_normalized": 0.872194817790133,
+      "market_cap_normalized": 0.874848603309845,
+      "total_volume_normalized": 0.36311210124917115
+    },
+    "time": 1738713600000,
+    "time_locale": "5.02.2025, 01:00:00",
+    "time_normalized": 1,
+    "pivx": {
+      "price": 0.19366197204074864,
+      "market_cap": 17450946.48053149,
+      "total_volume": 2213217.1681849365,
+      "price_normalized": 0.07511526393584064,
+      "market_cap_normalized": 0.10334654856085537,
+      "total_volume_normalized": 0.028944921137234368
+    },
+    "polkadot": {
+      "price": 4.7465688265166195,
+      "market_cap": 7208967694.395373,
+      "total_volume": 467716839.7706376,
+      "price_normalized": 0.12959384328039816,
+      "market_cap_normalized": 0.16726024481586857,
+      "total_volume_normalized": 0.10046374641347282
+    },
+    "stakecube": {
+      "price": 0.011820114893569704,
+      "market_cap": 182088.70340940193,
+      "total_volume": 1632.8040607765934,
+      "price_normalized": 0.07597183061106692,
+      "market_cap_normalized": 0.09659337859494978,
+      "total_volume_normalized": 0.18188253107466315
+    },
+    "hive_dollar": {
+      "price": 0.946607066967618,
+      "market_cap": 32583849.80702789,
+      "total_volume": 13012.53101528065,
+      "price_normalized": 0.30652616506776337,
+      "market_cap_normalized": 0.9005920903977837,
+      "total_volume_normalized": 0.002095955522928389
+    },
+    "hive": {
+      "price": 0.32480991514067964,
+      "market_cap": 151012872.80586576,
+      "total_volume": 7660808.908352794,
+      "price_normalized": 0.3331253279903392,
+      "market_cap_normalized": 0.34376266378415776,
+      "total_volume_normalized": 0.003420273536779131
+    },
+    "blackcoin": {
+      "price": 0.0578715775068155,
+      "market_cap": 3654800.784180027,
+      "total_volume": 11.5743155013631,
+      "price_normalized": 0.8506424957538454,
+      "market_cap_normalized": 0.8499529157808936,
+      "total_volume_normalized": 0.00005458356833656073
+    }
   }
 };
 console.log(data);
