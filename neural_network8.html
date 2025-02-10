@@ -47,6 +47,7 @@
     <label for="daysToLearn">dni do nauki:</label>
     <select id="daysToLearn">
         <option value="30">30</option>
+        <option value="31">31</option>
         <option value="28">28</option>
         <option value="21">21</option>
         <option value="14">14</option>
@@ -153,7 +154,7 @@
         console.log((predictedValues[0] * (maxPrice - minPrice)) + minPrice);
         grid.cellText(keys.length + 1, 1, (predictedValues[0] * (maxPrice - minPrice)) + minPrice);
 
-        let predicLastDays = 100;
+        let predicLastDays = 105;
 
         for (let j = 0; j < predicLastDays; j++) {
             predictInput = [];
